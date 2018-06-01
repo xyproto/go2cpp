@@ -14,6 +14,10 @@ func main() {
 		a string = "hi"
 	)
 
+	var n string
+
+	n = a
+
 	// Outputs to stderr
-	println(a, x, y, z)
+	println(n, x, y, z)
 }

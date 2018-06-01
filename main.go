@@ -279,6 +279,10 @@ func ElseIfSentence(source string) (output string) {
 	return "} else if (" + expression + ") {"
 }
 
+func TypeReplace(source string) string {
+	return strings.Replace(source, "string", "std::string", -1)
+}
+
 func VarDeclaration(source string) (output string) {
 	output = source
 	if strings.HasPrefix(output, "var ") {
@@ -287,10 +291,16 @@ func VarDeclaration(source string) (output string) {
 	if strings.Contains(output, "=") {
 		parts := strings.Split(output, " ")
 		if len(parts) == 4 {
-			output = parts[0] + " " + parts[2] + parts[3]
+			output = parts[0] + " " + parts[2] + " " + parts[3]
+		}
+		output = "auto " + output
+	} else {
+		parts := strings.Split(output, " ")
+		if len(parts) == 3 {
+			output = TypeReplace(parts[2]) + " " + parts[1]
 		}
 	}
-	return "auto " + output
+	return output
 }
 
 func go2cpp(source string) string {
