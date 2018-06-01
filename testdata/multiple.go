@@ -11,5 +11,6 @@ func addsub(x int) (a int, b int) {
 
 func main() {
 	y,z := addsub(4)
-	fmt.Println("y=", y, "z=", z)
+	fmt.Println("y =", y)
+	fmt.Println("z =", z)
 }

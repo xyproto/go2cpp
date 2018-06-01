@@ -12,7 +12,6 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 )
 
@@ -24,7 +23,6 @@ func LiteralStrings(source string) (output string) {
 		"\")": "\"s)",
 		"\";": "\"s;",
 		"\",": "\"s,",
-		"\" ": "\"s ",
 	}
 	hasLiteral := false
 	for k, v := range replacements {
@@ -161,12 +159,13 @@ func hasInt(ints []int, x int) bool {
 }
 
 func splitAtAndTrim(s string, poss []int) []string {
-	l := make([]string, len(poss))
+	l := make([]string, len(poss)+1)
 	startpos := 0
 	for i, pos := range poss {
 		l[i] = strings.TrimSpace(s[startpos:pos])
 		startpos = pos + 1
 	}
+	l[len(poss)] = strings.TrimSpace(s[startpos:])
 	return l
 }
 
@@ -202,7 +201,7 @@ func PrintStatement(source string) (output string) {
 	if len(commaPos) > 0 {
 		parts := splitAtAndTrim(args, commaPos)
 		//fmt.Println(parts)
-		s := strings.Join(parts, " << ")
+		s := strings.Join(parts, " << \" \" << ")
 		//fmt.Println(s)
 		output += s
 	} else {
@@ -254,7 +253,7 @@ func go2cpp(source string) string {
 			continue
 		}
 		if strings.HasPrefix(trimmedLine, "func") {
-			newLine, currentReturnType, currentFunctionName = FunctionSignature(line)
+			newLine, currentReturnType, currentFunctionName = FunctionSignature(trimmedLine)
 		} else if strings.HasPrefix(trimmedLine, "return") {
 			if strings.HasPrefix(currentReturnType, tupleType) {
 				elems := strings.SplitN(newLine, "return ", 2)
@@ -292,7 +291,7 @@ func go2cpp(source string) string {
 		if currentFunctionName == "main" && trimmedLine == "}" {
 			newLine = strings.Replace(line, "}", "return 0;\n}", 1)
 		}
-		if !has(endings, lastchar(line)) {
+		if !has(endings, lastchar(trimmedLine)) && !strings.HasPrefix(trimmedLine, "//") {
 			newLine += ";"
 		}
 		lines = append(lines, newLine)
@@ -348,18 +347,24 @@ func main() {
 	cmd2 := exec.Command("g++", "-x", "c++", "-std=c++17", "-Os", "-o", "/dev/stdout", "-")
 	cmd2.Stdin = strings.NewReader(formattedCPP)
 	var compiled bytes.Buffer
+	var errors bytes.Buffer
 	cmd2.Stdout = &compiled
+	cmd2.Stderr = &errors
 	err = cmd2.Run()
 	if err != nil {
-		fmt.Println("g++ with support for -std=c++17 must be available")
+		fmt.Println("Failed to compile this with g++:")
+		fmt.Println(formattedCPP)
+		fmt.Println("Errors:")
+		fmt.Println(errors.String())
 		log.Fatal(err)
 	}
-	outputFilename := filepath.Base(os.Getenv("PWD"))
+	//defaultOutputFilename := filepath.Base(os.Getenv("PWD"))
 	if len(os.Args) > 2 {
 		if os.Args[2] != "-o" {
 			log.Fatal("The second argument must be -o")
 		}
 	}
+	outputFilename := ""
 	if len(os.Args) > 3 {
 		outputFilename = os.Args[3]
 	}
@@ -369,6 +374,6 @@ func main() {
 			log.Fatal(err)
 		}
 	} else {
-		fmt.Print(compiled.Bytes())
+		fmt.Println(formattedCPP)
 	}
 }
