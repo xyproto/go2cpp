@@ -71,7 +71,8 @@ func WholeProgramReplace(source string) (output string) {
 func AddFunctions(source string) (output string) {
 	output = source
 	replacements := map[string]string{
-		"strings.Contains": "inline auto stringsContains(std::string a, std::string b) -> bool { return a.find(b) != std::string::npos; }",
+		"strings.Contains":  "inline auto stringsContains(std::string const& a, std::string const& b) -> bool { return a.find(b) != std::string::npos; }",
+		"strings.HasPrefix": "inline auto stringsHasPrefix(std::string const& givenString, std::string const& prefix) -> auto { return 0 == givenString.find(prefix); }",
 	}
 	for k, v := range replacements {
 		if strings.Contains(output, k) {

@@ -16,3 +16,4 @@ testdata/hello
 testdata/multiple
 testdata/if
 testdata/contains
+testdata/prefix
