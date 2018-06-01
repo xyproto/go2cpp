@@ -81,7 +81,60 @@ auto main() -> int
 }
 ```
 
-## General info
+# General info
 
 * Version: 0.0.0
 * License: MIT
+
+# TODO
+
+## Keywords
+
+- [ ] `break`
+- [ ] `case`
+- [ ] `chan`
+- [ ] `const`
+- [ ] `continue`
+- [ ] `default`
+- [ ] `defer`
+- [x] `else`
+- [ ] `fallthrough`
+- [ ] `for`
+- [x] `func`
+- [ ] `go`
+- [ ] `goto`
+- [x] `if`
+- [/] `import`
+- [ ] `interface`
+- [ ] `map`
+- [/] `package`
+- [ ] `range`
+- [x] `return`
+- [ ] `select`
+- [ ] `struct`
+- [ ] `switch`
+- [ ] `type`
+- [ ] `var`
+
+## Standard library
+
+- [x] `fmt.Println`
+- [x] `fmt.Print`
+- [ ] `fmt.Printf`
+- [ ] `fmt.Sprintf`
+- [x] `strings.Contains`
+- [ ] `strings.HasPrefix`
+- [ ] `strings.HasSuffix`
+- [ ] `strings.Index`
+- [ ] `strings.Join`
+- [ ] `strings.NewReader`
+- [ ] `strings.Replace`
+- [ ] `strings.Split`
+- [ ] `strings.SplitN`
+- [ ] `strings.TrimSpace`
+- [ ] All the rest
+
+## Robustness
+
+- [ ] The addition of `s` to string literals needs to be more robust, and check if within quotes or not.
+- [ ] Add a `main_test.go` that builds and calls the executables, then compare the output with the output from the executables built with the go compiler.
