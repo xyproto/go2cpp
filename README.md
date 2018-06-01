@@ -6,6 +6,8 @@ Compiles Go to native executables via C++17.
 
 * Only works with extremely simple code samples, for now.
 
+Pull requests are warmly welcome!
+
 ## Usage
 
 Compile to executable:
