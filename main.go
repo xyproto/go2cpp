@@ -207,7 +207,13 @@ func PrintStatement(source string) (output string) {
 	if strings.HasSuffix(args, ")") {
 		args = args[:len(args)-1]
 	}
-	output = "std::cout << std::boolalpha << "
+	if strings.HasPrefix(name, "print") {
+		output = "std::cerr"
+	} else {
+		output = "std::cout"
+	}
+	// Output booleans as "true" and "false" instead of as numbers
+	output += " << std::boolalpha << "
 	// Don't split on commas that are within paranthesis or quotes
 	withinPar := 0
 	withinQuot := false
@@ -273,12 +279,27 @@ func ElseIfSentence(source string) (output string) {
 	return "} else if (" + expression + ") {"
 }
 
+func VarDeclaration(source string) (output string) {
+	output = source
+	if strings.HasPrefix(output, "var ") {
+		output = output[4:]
+	}
+	if strings.Contains(output, "=") {
+		parts := strings.Split(output, " ")
+		if len(parts) == 4 {
+			output = parts[0] + " " + parts[2] + parts[3]
+		}
+	}
+	return "auto " + output
+}
+
 func go2cpp(source string) string {
 	lines := []string{}
 	currentReturnType := ""
 	currentFunctionName := ""
 	inImport := false
 	curlyCount := 0
+	inVar := false
 	for _, line := range strings.Split(source, "\n") {
 		newLine := line
 		trimmedLine := strings.TrimSpace(line)
@@ -296,8 +317,12 @@ func go2cpp(source string) string {
 			continue
 		} else if inImport {
 			continue
-		}
-		if strings.HasPrefix(trimmedLine, "func") {
+		} else if inVar && strings.Contains(trimmedLine, ")") {
+			inVar = false
+			continue
+		} else if inVar {
+			newLine = VarDeclaration(line)
+		} else if strings.HasPrefix(trimmedLine, "func") {
 			newLine, currentReturnType, currentFunctionName = FunctionSignature(trimmedLine)
 		} else if strings.HasPrefix(trimmedLine, "return") {
 			if strings.HasPrefix(currentReturnType, tupleType) {
@@ -308,7 +333,7 @@ func go2cpp(source string) string {
 			}
 		} else if strings.HasPrefix(trimmedLine, "fmt.Print") || strings.HasPrefix(trimmedLine, "print") {
 			newLine = PrintStatement(line)
-		} else if strings.Contains(trimmedLine, "=") {
+		} else if strings.Contains(trimmedLine, "=") && !strings.HasPrefix(trimmedLine, "var ") {
 			elem := strings.Split(trimmedLine, "=")
 			left := strings.TrimSpace(elem[0])
 			declarationAssignment := false
@@ -338,6 +363,11 @@ func go2cpp(source string) string {
 			newLine = IfSentence(line)
 		} else if strings.HasPrefix(trimmedLine, "} else if ") {
 			newLine = ElseIfSentence(line)
+		} else if trimmedLine == "var (" {
+			inVar = true
+			continue
+		} else if strings.HasPrefix(trimmedLine, "var ") {
+			newLine = VarDeclaration(line)
 		}
 		if currentFunctionName == "main" && trimmedLine == "}" && curlyCount == 0 { // curlyCount has already been decreased for this line
 			newLine = strings.Replace(line, "}", "return 0;\n}", 1)

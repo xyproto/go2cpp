@@ -14,6 +14,7 @@ var testPrograms = []string{
 	"if",
 	"contains",
 	"prefix",
+	"var",
 }
 
 func assertEqual(t *testing.T, a interface{}, b interface{}, message string) {
@@ -27,17 +28,19 @@ func assertEqual(t *testing.T, a interface{}, b interface{}, message string) {
 }
 
 // Run a command and return what has been written to stdout,
+// or an empty string, and what has been written to stderr,
 // or an empty string.
-func Run(cmdString string) string {
-	var output bytes.Buffer
+func Run(cmdString string) (string, string, error) {
+	var outputStdout, outputStderr bytes.Buffer
 	fields := strings.Split(cmdString, " ")
 	cmd := exec.Command(fields[0], fields[1:]...)
-	cmd.Stdout = &output
+	cmd.Stdout = &outputStdout
+	cmd.Stderr = &outputStderr
 	err := cmd.Run()
 	if err != nil {
-		return ""
+		return "", "", err
 	}
-	return output.String()
+	return outputStdout.String(), outputStderr.String(), nil
 }
 
 func TestPrograms(t *testing.T) {
@@ -47,15 +50,22 @@ func TestPrograms(t *testing.T) {
 
 		// Program output when running with "go run"
 		fmt.Println("Compiling and running " + gofile + " with go...")
-		output_go := Run("go run " + gofile)
+		stdoutGo, stderrGo, err := Run("go run " + gofile)
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		// Program output when compiling with tinygocompiler and running the executable
 		fmt.Println("Compiling and running " + gofile + " with tinygocompiler...")
 		Run("./tinygocompiler " + gofile + " -o testdata/" + program)
-		output_tgc := Run("testdata/" + program)
+		stdoutTgc, stderrTgc, err := Run("testdata/" + program)
+		if err != nil {
+			t.Fatal(err)
+		}
 		Run("rm testdata/" + program)
 
 		// Check if they are equal
-		assertEqual(t, output_go, output_tgc, "tinygocompiler and go run should produce the same output")
+		assertEqual(t, stdoutGo, stdoutTgc, "tinygocompiler and go run should produce the same output on stdout")
+		assertEqual(t, stderrGo, stderrTgc, "tinygocompiler and go run should produce the same output on stderr")
 	}
 }

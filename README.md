@@ -104,17 +104,17 @@ auto main() -> int
 - [ ] `go`
 - [ ] `goto`
 - [x] `if`
-- [/] `import`
+- [x] `import` (partially)
 - [ ] `interface`
 - [ ] `map`
-- [/] `package`
+- [x] `package` (partially)
 - [ ] `range`
 - [x] `return`
 - [ ] `select`
 - [ ] `struct`
 - [ ] `switch`
 - [ ] `type`
-- [ ] `var`
+- [x] `var`
 
 ## Standard library
 
@@ -123,7 +123,7 @@ auto main() -> int
 - [ ] `fmt.Printf`
 - [ ] `fmt.Sprintf`
 - [x] `strings.Contains`
-- [ ] `strings.HasPrefix`
+- [x] `strings.HasPrefix`
 - [ ] `strings.HasSuffix`
 - [ ] `strings.Index`
 - [ ] `strings.Join`
