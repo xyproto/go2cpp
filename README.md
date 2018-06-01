@@ -27,7 +27,7 @@ Output what the intermediate C++17 code looks like:
 
 **Go input:**
 
-```
+```go
 // Multiple return
 package main
 
@@ -48,7 +48,7 @@ func main() {
 
 **C++ output:**
 
-```
+```c++
 #include <iostream>
 #include <tuple>
 
