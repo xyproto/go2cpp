@@ -4,11 +4,20 @@ Compiles Go to native executables via C++17.
 
 Aims to produce small executables, by default.
 
-## Known problems
+## Known issues
 
 * Only works with extremely simple code samples, for now.
+* Does not use an AST, deals mainly with strings, for now.
 
 Pull requests are warmly welcome!
+
+## Features
+
+* Pretty fast.
+* Simple to use.
+* Only uses to Go standard library, no external packages (but depends on `g++` and `clang-format`).
+* Low complexity.
+* Short source code.
 
 ## Usage
 
