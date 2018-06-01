@@ -315,14 +315,24 @@ func go2cpp(source string) string {
 
 func main() {
 
-    // TODO: Use https://github.com/docopt/docopt.go for parsing arguments
+	// TODO: Use https://github.com/docopt/docopt.go for parsing arguments
 
 	debug := false
 	compile := true
+	clangFormat := true
 
 	inputFilename := ""
 	if len(os.Args) > 1 {
 		inputFilename = os.Args[1]
+	}
+	if len(os.Args) > 2 {
+		if os.Args[2] == "-o" {
+			clangFormat = true
+		} else if os.Args[2] == "-O" {
+			clangFormat = false
+		} else if os.Args[2] != "-o" {
+			log.Fatal("The second argument must be -o (don't prepare sources with clang-format) or -O (prepare sources with clang-format)")
+		}
 	}
 
 	var sourceData []byte
@@ -339,24 +349,32 @@ func main() {
 		fmt.Println(go2cpp(string(sourceData)))
 		return
 	}
-	cmd := exec.Command("clang-format", "-style={BasedOnStyle: Webkit, ColumnLimit: 90}")
-	cmd.Stdin = strings.NewReader(go2cpp(string(sourceData)))
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	err = cmd.Run()
-	if err != nil {
-		fmt.Println("clang-format must be available")
-		log.Fatal(err)
+
+	cppSource := ""
+	if clangFormat {
+		cmd := exec.Command("clang-format", "-style={BasedOnStyle: Webkit, ColumnLimit: 90}")
+		cmd.Stdin = strings.NewReader(go2cpp(string(sourceData)))
+		var out bytes.Buffer
+		cmd.Stdout = &out
+		err = cmd.Run()
+		if err != nil {
+			log.Println("clang-format is not available, the output will look ugly!")
+			cppSource = go2cpp(string(sourceData))
+		} else {
+			cppSource = out.String()
+		}
+	} else {
+		cppSource = go2cpp(string(sourceData))
 	}
-	formattedCPP := out.String()
+
 	if !compile {
-		fmt.Println(formattedCPP)
+		fmt.Println(cppSource)
 		return
 	}
 
-	// Compile the string in formattedCPP
+	// Compile the string in cppSource
 	cmd2 := exec.Command("g++", "-x", "c++", "-std=c++17", "-pipe", "-s", "-Os", "-o", "/dev/stdout", "-")
-	cmd2.Stdin = strings.NewReader(formattedCPP)
+	cmd2.Stdin = strings.NewReader(cppSource)
 	var compiled bytes.Buffer
 	var errors bytes.Buffer
 	cmd2.Stdout = &compiled
@@ -364,17 +382,12 @@ func main() {
 	err = cmd2.Run()
 	if err != nil {
 		fmt.Println("Failed to compile this with g++:")
-		fmt.Println(formattedCPP)
+		fmt.Println(cppSource)
 		fmt.Println("Errors:")
 		fmt.Println(errors.String())
 		log.Fatal(err)
 	}
 	//defaultOutputFilename := filepath.Base(os.Getenv("PWD"))
-	if len(os.Args) > 2 {
-		if os.Args[2] != "-o" {
-			log.Fatal("The second argument must be -o")
-		}
-	}
 	outputFilename := ""
 	if len(os.Args) > 3 {
 		outputFilename = os.Args[3]
@@ -385,6 +398,6 @@ func main() {
 			log.Fatal(err)
 		}
 	} else {
-		fmt.Println(formattedCPP)
+		fmt.Println(cppSource)
 	}
 }
