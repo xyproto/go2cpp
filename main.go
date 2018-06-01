@@ -34,7 +34,7 @@ func between(s, a, b string) string {
 	return s[apos+len(a) : bpos]
 }
 
-// TODO: Make more robust
+// TODO: Make more robust, this easily breaks
 func LiteralStrings(source string) (output string) {
 	output = source
 	replacements := map[string]string{
@@ -64,6 +64,20 @@ func WholeProgramReplace(source string) (output string) {
 	}
 	for k, v := range replacements {
 		output = strings.Replace(output, k, v, -1)
+	}
+	return output
+}
+
+func AddFunctions(source string) (output string) {
+	output = source
+	replacements := map[string]string{
+		"strings.Contains": "inline auto stringsContains(std::string a, std::string b) -> bool { return a.find(b) != std::string::npos; }",
+	}
+	for k, v := range replacements {
+		if strings.Contains(output, k) {
+			output = strings.Replace(output, k, strings.Replace(k, ".", "", -1), -1)
+			output = v + "\n" + output
+		}
 	}
 	return output
 }
@@ -103,7 +117,12 @@ func FunctionRetvals(source string) (output string) {
 	output = source
 	if strings.Contains(output, "(") {
 		s := between(output, "(", ")")
-		output = "(" + FunctionArguments(s) + ")"
+		retvals := FunctionArguments(s)
+		if strings.Contains(retvals, ",") {
+			output = "(" + retvals + ")"
+		} else {
+			output = retvals
+		}
 	}
 	return strings.TrimSpace(output)
 }
@@ -187,7 +206,7 @@ func PrintStatement(source string) (output string) {
 	if strings.HasSuffix(args, ")") {
 		args = args[:len(args)-1]
 	}
-	output = "std::cout << "
+	output = "std::cout << std::boolalpha << "
 	// Don't split on commas that are within paranthesis or quotes
 	withinPar := 0
 	withinQuot := false
@@ -332,6 +351,7 @@ func go2cpp(source string) string {
 	// The order matters
 	output = LiteralStrings(output)
 	output = WholeProgramReplace(output)
+	output = AddFunctions(output)
 	output = AddIncludes(output)
 
 	return output
