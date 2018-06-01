@@ -339,7 +339,7 @@ func main() {
 		fmt.Println(go2cpp(string(sourceData)))
 		return
 	}
-	cmd := exec.Command("clang-format", "-style=Webkit")
+	cmd := exec.Command("clang-format", "-style={BasedOnStyle: Webkit, ColumnLimit: 90}")
 	cmd.Stdin = strings.NewReader(go2cpp(string(sourceData)))
 	var out bytes.Buffer
 	cmd.Stdout = &out
