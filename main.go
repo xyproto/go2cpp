@@ -231,7 +231,7 @@ func AddIncludes(source string) (output string) {
 			}
 		}
 	}
-	return includeString + output
+	return includeString + "\n" + output
 }
 
 func go2cpp(source string) string {
