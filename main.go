@@ -241,18 +241,36 @@ func AddIncludes(source string) (output string) {
 	return includeString + "\n" + output
 }
 
+func IfSentence(source string) (output string) {
+	output = source
+	expression := strings.TrimSpace(between(source, "if", "{"))
+	return "if (" + expression + ") {"
+}
+
+func ElseIfSentence(source string) (output string) {
+	output = source
+	expression := strings.TrimSpace(between(source, "} else if", "{"))
+	return "} else if (" + expression + ") {"
+}
+
 func go2cpp(source string) string {
 	lines := []string{}
 	currentReturnType := ""
 	currentFunctionName := ""
 	inImport := false
+	curlyCount := 0
 	for _, line := range strings.Split(source, "\n") {
 		newLine := line
 		trimmedLine := strings.TrimSpace(line)
+		if strings.HasSuffix(trimmedLine, ";") {
+			trimmedLine = trimmedLine[:len(trimmedLine)-1]
+		}
 		if len(trimmedLine) == 0 {
 			lines = append(lines, newLine)
 			continue
 		}
+		// Keep track of how deep we are into curly brackets
+		curlyCount += (strings.Count(trimmedLine, "{") - strings.Count(trimmedLine, "}"))
 		if inImport && strings.Contains(trimmedLine, ")") {
 			inImport = false
 			continue
@@ -286,16 +304,22 @@ func go2cpp(source string) string {
 			} else {
 				newLine = left + " = " + right
 			}
-		} else if strings.HasPrefix(trimmedLine, "package") {
+		} else if strings.HasPrefix(trimmedLine, "package ") {
 			continue
 		} else if strings.HasPrefix(trimmedLine, "import") {
-			inImport = true
+			if strings.Contains(trimmedLine, "(") {
+				inImport = true
+			}
 			if strings.Contains(trimmedLine, ")") {
 				inImport = false
 			}
 			continue
+		} else if strings.HasPrefix(trimmedLine, "if ") {
+			newLine = IfSentence(line)
+		} else if strings.HasPrefix(trimmedLine, "} else if ") {
+			newLine = ElseIfSentence(line)
 		}
-		if currentFunctionName == "main" && trimmedLine == "}" {
+		if currentFunctionName == "main" && trimmedLine == "}" && curlyCount == 0 { // curlyCount has already been decreased for this line
 			newLine = strings.Replace(line, "}", "return 0;\n}", 1)
 		}
 		if !has(endings, lastchar(trimmedLine)) && !strings.HasPrefix(trimmedLine, "//") {
