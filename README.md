@@ -2,9 +2,9 @@
 
 Compiles Go to native executables via C++17.
 
-Only works for extremely basic code samples, for now.
+## Known problems
 
-Work in progress! It's very early days.
+* Only works with extremely simple code samples, for now.
 
 ## Usage
 
