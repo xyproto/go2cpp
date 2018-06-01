@@ -382,7 +382,7 @@ func go2cpp(source string) string {
 		if currentFunctionName == "main" && trimmedLine == "}" && curlyCount == 0 { // curlyCount has already been decreased for this line
 			newLine = strings.Replace(line, "}", "return 0;\n}", 1)
 		}
-		if !has(endings, lastchar(trimmedLine)) && !strings.HasPrefix(trimmedLine, "//") {
+		if (!has(endings, lastchar(trimmedLine)) || strings.Contains(trimmedLine, "=")) && !strings.HasPrefix(trimmedLine, "//") {
 			newLine += ";"
 		}
 		lines = append(lines, newLine)

@@ -136,5 +136,6 @@ auto main() -> int
 
 ## Robustness
 
+- [ ] Rewrite the broken semicolon-inserter.
 - [ ] The addition of `s` to string literals needs to be more robust, and check if within quotes or not.
 - [ ] Add a `main_test.go` that builds and calls the executables, then compare the output with the output from the executables built with the go compiler.
