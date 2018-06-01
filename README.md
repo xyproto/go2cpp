@@ -2,6 +2,8 @@
 
 Compiles Go to native executables via C++17.
 
+Aims to produce small executables, by default.
+
 ## Known problems
 
 * Only works with extremely simple code samples, for now.

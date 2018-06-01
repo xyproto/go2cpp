@@ -17,6 +17,24 @@ import (
 
 const tupleType = "std::tuple"
 
+var endings = []string{
+	"{", ",", "}",
+}
+
+// between returns the string between two given strings, or the original string
+func between(s, a, b string) string {
+	apos := strings.Index(s, a)
+	if apos == -1 {
+		return s
+	}
+	bpos := strings.Index(s, b)
+	if bpos == -1 {
+		return s
+	}
+	return s[apos+len(a) : bpos]
+}
+
+// TODO: Make more robust
 func LiteralStrings(source string) (output string) {
 	output = source
 	replacements := map[string]string{
@@ -37,6 +55,7 @@ func LiteralStrings(source string) (output string) {
 	return output
 }
 
+// TODO: Avoid whole-program replacements, if possible
 func WholeProgramReplace(source string) (output string) {
 	output = source
 	replacements := map[string]string{
@@ -49,18 +68,7 @@ func WholeProgramReplace(source string) (output string) {
 	return output
 }
 
-func between(s, a, b string) string {
-	apos := strings.Index(s, a)
-	if apos == -1 {
-		return s
-	}
-	bpos := strings.Index(s, b)
-	if bpos == -1 {
-		return s
-	}
-	return s[apos+len(a) : bpos]
-}
-
+// FunctionArguments transforms the arguments given to a function
 func FunctionArguments(source string) (output string) {
 	output = source
 	if strings.Contains(output, ",") {
@@ -87,6 +95,7 @@ func FunctionArguments(source string) (output string) {
 	return strings.TrimSpace(output)
 }
 
+// FunctionRetvals transforms the return values from a function
 func FunctionRetvals(source string) (output string) {
 	if len(strings.TrimSpace(source)) == 0 {
 		return source
@@ -99,7 +108,7 @@ func FunctionRetvals(source string) (output string) {
 	return strings.TrimSpace(output)
 }
 
-// Picks out the types given a list of C++ arguments with name and type
+// CPPTypes picks out the types given a list of C++ arguments with name and type
 func CPPTypes(args string) string {
 	words := strings.Split(between(args, "(", ")"), ",")
 	var atypes []string
@@ -110,6 +119,8 @@ func CPPTypes(args string) string {
 	return strings.Join(atypes, ", ")
 }
 
+// FunctionSignature transforms a function signature that spans one line
+// Will change the "func main" signature to a main function that returns an int.
 func FunctionSignature(source string) (output, returntype, name string) {
 	if len(strings.TrimSpace(source)) == 0 {
 		return source, "", ""
@@ -143,10 +154,6 @@ func has(l []string, s string) bool {
 		}
 	}
 	return false
-}
-
-var endings = []string{
-	"{", ",", "}",
 }
 
 func hasInt(ints []int, x int) bool {
@@ -307,6 +314,9 @@ func go2cpp(source string) string {
 }
 
 func main() {
+
+    // TODO: Use https://github.com/docopt/docopt.go for parsing arguments
+
 	debug := false
 	compile := true
 
@@ -343,8 +353,9 @@ func main() {
 		fmt.Println(formattedCPP)
 		return
 	}
+
 	// Compile the string in formattedCPP
-	cmd2 := exec.Command("g++", "-x", "c++", "-std=c++17", "-Os", "-o", "/dev/stdout", "-")
+	cmd2 := exec.Command("g++", "-x", "c++", "-std=c++17", "-pipe", "-s", "-Os", "-o", "/dev/stdout", "-")
 	cmd2.Stdin = strings.NewReader(formattedCPP)
 	var compiled bytes.Buffer
 	var errors bytes.Buffer
