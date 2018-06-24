@@ -91,14 +91,14 @@ auto main() -> int
 ## Keywords
 
 - [ ] `break`
-- [ ] `case`
+- [x] `case`
 - [ ] `chan`
 - [ ] `const`
 - [ ] `continue`
-- [ ] `default`
+- [x] `default`
 - [ ] `defer`
 - [x] `else`
-- [ ] `fallthrough`
+- [x] `fallthrough`
 - [ ] `for`
 - [x] `func`
 - [ ] `go`
@@ -112,7 +112,7 @@ auto main() -> int
 - [x] `return`
 - [ ] `select`
 - [ ] `struct`
-- [ ] `switch`
+- [x] `switch`
 - [ ] `type`
 - [x] `var`
 
@@ -133,9 +133,3 @@ auto main() -> int
 - [ ] `strings.SplitN`
 - [ ] `strings.TrimSpace`
 - [ ] All the rest
-
-## Robustness
-
-- [ ] Rewrite the broken semicolon-inserter.
-- [ ] The addition of `s` to string literals needs to be more robust, and check if within quotes or not.
-- [ ] Add a `main_test.go` that builds and calls the executables, then compare the output with the output from the executables built with the go compiler.

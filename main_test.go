@@ -15,6 +15,7 @@ var testPrograms = []string{
 	"contains",
 	"prefix",
 	"var",
+	"switch",
 }
 
 func assertEqual(t *testing.T, a interface{}, b interface{}, message string) {

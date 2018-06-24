@@ -12,14 +12,20 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 )
 
 const tupleType = "std::tuple"
 
-var endings = []string{
-	"{", ",", "}",
-}
+var endings = []string{"{", ",", "}", ":"}
+
+var (
+	switchExpressionCounter int = -1
+	firstCase               bool
+	switchLabel             string
+	labelCounter            int
+)
 
 // between returns the string between two given strings, or the original string
 func between(s, a, b string) string {
@@ -283,6 +289,47 @@ func TypeReplace(source string) string {
 	return strings.Replace(source, "string", "std::string", -1)
 }
 
+func ForLoop(source string) (output string) {
+	panic("TO IMPLEMENT: FOR LOOP: " + source)
+	output = source
+	return
+}
+
+func SwitchExpressionVariable() string {
+	return "_s__" + strconv.Itoa(switchExpressionCounter)
+}
+
+func LabelName() string {
+	return "_l__" + strconv.Itoa(labelCounter)
+}
+
+func Switch(source string) (output string) {
+	output = strings.TrimSpace(source)[len("switch "):]
+	if strings.HasSuffix(output, "{") {
+		output = strings.TrimSpace(output[:len(output)-1])
+	}
+	switchExpressionCounter++
+	firstCase = true
+	return "auto " + SwitchExpressionVariable() + " = " + output + "; // switch on " + output
+}
+
+func Case(source string) (output string) {
+	output = source
+	s := between(output, " ", ":")
+	if firstCase {
+		firstCase = false
+		output = "if ("
+	} else {
+		output = "} else if ("
+	}
+	output += SwitchExpressionVariable() + " == " + s + ") { // case " + s
+	if switchLabel != "" {
+		output += "\n" + switchLabel + ":"
+		switchLabel = ""
+	}
+	return output
+}
+
 func VarDeclaration(source string) (output string) {
 	output = source
 	if strings.HasPrefix(output, "var ") {
@@ -334,10 +381,16 @@ func go2cpp(source string) string {
 			newLine = VarDeclaration(line)
 		} else if strings.HasPrefix(trimmedLine, "func") {
 			newLine, currentReturnType, currentFunctionName = FunctionSignature(trimmedLine)
+		} else if strings.HasPrefix(trimmedLine, "for") {
+			newLine = ForLoop(line)
+		} else if strings.HasPrefix(trimmedLine, "switch") {
+			newLine = Switch(line)
+		} else if strings.HasPrefix(trimmedLine, "case") {
+			newLine = Case(line)
 		} else if strings.HasPrefix(trimmedLine, "return") {
 			if strings.HasPrefix(currentReturnType, tupleType) {
 				elems := strings.SplitN(newLine, "return ", 2)
-				newLine = "return " + currentReturnType + "{" + elems[1] + "}"
+				newLine = "return " + currentReturnType + "{" + elems[1] + "};"
 			} else {
 				// Just use the standard tuple
 			}
@@ -378,11 +431,21 @@ func go2cpp(source string) string {
 			continue
 		} else if strings.HasPrefix(trimmedLine, "var ") {
 			newLine = VarDeclaration(line)
+		} else if trimmedLine == "fallthrough" {
+			newLine = "goto " + LabelName() + "; // fallthrough"
+			switchLabel = LabelName()
+			labelCounter++
+		} else if trimmedLine == "default:" {
+			newLine = "} else { // default case"
+			if switchLabel != "" {
+				newLine += "\n" + switchLabel + ":"
+				switchLabel = ""
+			}
 		}
 		if currentFunctionName == "main" && trimmedLine == "}" && curlyCount == 0 { // curlyCount has already been decreased for this line
 			newLine = strings.Replace(line, "}", "return 0;\n}", 1)
 		}
-		if (!has(endings, lastchar(trimmedLine)) || strings.Contains(trimmedLine, "=")) && !strings.HasPrefix(trimmedLine, "//") {
+		if (!has(endings, lastchar(trimmedLine)) || strings.Contains(trimmedLine, "=")) && !strings.HasPrefix(trimmedLine, "//") && (!has(endings, lastchar(newLine)) && !strings.Contains(newLine, "//")) {
 			newLine += ";"
 		}
 		lines = append(lines, newLine)
