@@ -9,8 +9,6 @@ Produces small executables by default.
 * Only works with extremely simple code samples, for now.
 * Does not use an AST, deals mainly with strings, for now.
 
-Pull requests are warmly welcome!
-
 ## Features
 
 * Pretty fast.
