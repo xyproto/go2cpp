@@ -2,7 +2,7 @@
 
 Compiles Go to native executables via C++17.
 
-Aims to produce small executables, by default.
+Produces small executables by default.
 
 ## Known issues
 
@@ -23,11 +23,11 @@ Pull requests are warmly welcome!
 
 Compile to executable:
 
-    tinygocompiler main.go -o main
+    go2cpp17 main.go -o main
 
 Output what the intermediate C++17 code looks like:
 
-    tinygocompiler main.go
+    go2cpp17 main.go
 
 ## Requirements
 
