@@ -1,4 +1,4 @@
-# tinygocompiler
+# go2cpp17
 
 Compiles Go to native executables via C++17.
 
