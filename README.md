@@ -1,4 +1,4 @@
-# go2cpp17
+# go2cpp
 
 Compiles Go to native executables via C++17.
 
@@ -21,11 +21,11 @@ Produces small executables by default.
 
 Compile to executable:
 
-    go2cpp17 main.go -o main
+    go2cpp main.go -o main
 
 Output what the intermediate C++17 code looks like:
 
-    go2cpp17 main.go
+    go2cpp main.go
 
 ## Requirements
 
