@@ -50,6 +50,7 @@ func LiteralStrings(source string) (output string) {
 		"\"}":  "\"s}",
 		"\" }": "\"s }",
 		"\" )": "\"s )",
+		"\":":  "\"s:",
 	}
 	hasLiteral := false
 	for k, v := range replacements {
@@ -216,10 +217,15 @@ func PrintStatement(source string) (output string) {
 	if strings.HasSuffix(args, ")") {
 		args = args[:len(args)-1]
 	}
+	// fmt.Println, fmt.Print
 	if strings.HasPrefix(name, "print") {
 		output = "std::cerr"
 	} else {
 		output = "std::cout"
+	}
+	if len(args) == 0 {
+		// fmt.Println() or fmt.Print()
+		return output + " << std::endl"
 	}
 	// Output booleans as "true" and "false" instead of as numbers
 	output += " << std::boolalpha << "
@@ -259,11 +265,14 @@ func PrintStatement(source string) (output string) {
 func AddIncludes(source string) (output string) {
 	output = source
 	includes := map[string]string{
-		"std::tuple":  "tuple",
-		"std::endl":   "iostream",
-		"std::cout":   "iostream",
-		"std::string": "string",
-		"std::size":   "iterator",
+		"std::tuple":         "tuple",
+		"std::endl":          "iostream",
+		"std::cout":          "iostream",
+		"std::string":        "string",
+		"std::size":          "iterator",
+		"std::unordered_map": "unordered_map",
+		"std::hash":          "functional",
+		"std::size_t":        "cstddef",
 	}
 	includeString := ""
 	for k, v := range includes {
@@ -290,7 +299,9 @@ func ElseIfSentence(source string) (output string) {
 }
 
 func TypeReplace(source string) string {
-	return strings.Replace(source, "string", "std::string", -1)
+	output := source
+	output = strings.Replace(output, "string", "std::string", -1)
+	return output
 }
 
 func ForLoop(source string) string {
@@ -305,7 +316,7 @@ func ForLoop(source string) string {
 		// -->
 		// for (auto i = 0; i < std::size(l); i++) {
 
-		return "for (auto " + varname + " = 0; " + varname + " < std::size(" + listname + "); " + varname + "++) {"
+		return "for (std::size_t " + varname + " = 0; " + varname + " < std::size(" + listname + "); " + varname + "++) {"
 	}
 	// for range, over index and element, or key and value
 	if strings.Count(expression, ",") == 1 && strings.Contains(expression, "range") && strings.Contains(expression, ":=") {
@@ -318,7 +329,7 @@ func ForLoop(source string) string {
 		fields = strings.Split(expression, " ")
 		listname := fields[len(fields)-1]
 
-		return "for (auto " + indexvar + " = 0; " + indexvar + " < std::size(" + listname + "); " + indexvar + "++) {" + "\n" + "auto " + elemvar + " = " + listname + "[" + indexvar + "]"
+		return "for (std::size_t " + indexvar + " = 0; " + indexvar + " < std::size(" + listname + "); " + indexvar + "++) {" + "\n" + "auto " + elemvar + " = " + listname + "[" + indexvar + "]"
 	}
 	// not "for" + "range"
 	if strings.Contains(expression, ":=") {
@@ -391,6 +402,41 @@ func VarDeclaration(source string) (output string) {
 	return output
 }
 
+// shouldHash decides if the given type, as a key in an unordered_map, should be hashed
+func shouldHash(keyType string) bool {
+	// TODO: Check if always using std::hash makes sense, or only for some types (then which ones?)
+	return strings.Contains(keyType, "std::")
+}
+
+// HashElements transforms the contents of a map in Go to the contents of an unordered_map in C++
+// keyType is the type of the key, for instance "std::string"
+func HashElements(source string, keyType string) string {
+	if !strings.Contains(source, ",") {
+		return source
+	}
+	pairs := strings.Split(source, ",")
+	output := "{"
+	first := true
+	for _, pair := range pairs {
+		if !first {
+			output += ","
+		} else {
+			first = false
+		}
+		pair_elements := strings.SplitN(pair, ":", 2)
+		if len(pair_elements) != 2 {
+			panic("This should be two elements, separated by a colon: " + pair)
+		}
+		if shouldHash(keyType) {
+			output += "{std::hash<" + keyType + ">{}(" + pair_elements[0] + "), " + pair_elements[1] + "}"
+		} else {
+			output += "{" + pair_elements[0] + ", " + pair_elements[1] + "}"
+		}
+	}
+	output += "}"
+	return output
+}
+
 func go2cpp(source string) string {
 	lines := []string{}
 	currentReturnType := ""
@@ -456,6 +502,15 @@ func go2cpp(source string) string {
 					theType := TypeReplace(between(right, "]", "{"))
 					fields := strings.SplitN(right, "{", 2)
 					newLine = theType + " " + left + "[] {" + fields[1]
+				} else if strings.HasPrefix(right, "map[") {
+					keyType := TypeReplace(between(right, "map[", "]"))
+					valueType := TypeReplace(between(right, "]", "{"))
+					elements := between(right, "{", "}")
+					if shouldHash(keyType) {
+						newLine = "std::unordered_map<std::size_t, " + valueType + "> " + left + HashElements(elements, keyType)
+					} else {
+						newLine = "std::unordered_map<" + keyType + ", " + valueType + "> " + left + HashElements(elements, keyType)
+					}
 				} else {
 					newLine = "auto " + left + " = " + right
 				}
@@ -582,7 +637,7 @@ func main() {
 	}
 
 	// Compile the string in cppSource
-	cmd2 := exec.Command("g++", "-x", "c++", "-std=c++17", "-pipe", "-s", "-Os", "-o", "/dev/stdout", "-")
+	cmd2 := exec.Command("g++", "-x", "c++", "-std=c++17", "-O2", "-pipe", "-fPIC", "-Wfatal-errors", "-s", "-o", "/dev/stdout", "-")
 	cmd2.Stdin = strings.NewReader(cppSource)
 	var compiled bytes.Buffer
 	var errors bytes.Buffer

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -21,7 +22,8 @@ var testPrograms = []string{
 	"for_range_single",
 	"for_range_list",
 	"for_range_both",
-	//	"for_range_map",
+	//"for_range_map1",
+	//"for_range_map2",
 }
 
 func assertEqual(t *testing.T, a interface{}, b interface{}, message string) {
@@ -45,7 +47,7 @@ func Run(cmdString string) (string, string, error) {
 	cmd.Stderr = &outputStderr
 	err := cmd.Run()
 	if err != nil {
-		return "", "", err
+		return outputStdout.String(), outputStderr.String(), err
 	}
 	return outputStdout.String(), outputStderr.String(), nil
 }
@@ -63,11 +65,21 @@ func TestPrograms(t *testing.T) {
 		}
 
 		// Program output when compiling with go2cpp and running the executable
-		fmt.Println("Compiling and running " + gofile + " with go2cpp...")
+		fmt.Println("Compiling and running " + gofile + " with go2cpp and g++...")
 		Run("./go2cpp " + gofile + " -o testdata/" + program)
 		stdoutTgc, stderrTgc, err := Run("testdata/" + program)
 		if err != nil {
-			t.Fatal(err)
+			cmd := "./go2cpp " + gofile + " -O"
+			if explanation, _, err := Run(cmd); err != nil {
+				fmt.Println("TRANSPIPLATION FAILED:", cmd)
+				if strings.Contains(explanation, ": error: ") {
+
+				}
+				fmt.Println(explanation)
+			} else {
+				t.Fatal("go2cpp should not first fail and then succeed! Something is wrong.")
+			}
+			t.Fatal(errors.New("transpiling failed: " + gofile))
 		}
 		Run("rm testdata/" + program)
 
