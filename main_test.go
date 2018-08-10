@@ -56,9 +56,9 @@ func TestPrograms(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		// Program output when compiling with tinygocompiler and running the executable
-		fmt.Println("Compiling and running " + gofile + " with tinygocompiler...")
-		Run("./tinygocompiler " + gofile + " -o testdata/" + program)
+		// Program output when compiling with go2cpp and running the executable
+		fmt.Println("Compiling and running " + gofile + " with go2cpp...")
+		Run("./go2cpp " + gofile + " -o testdata/" + program)
 		stdoutTgc, stderrTgc, err := Run("testdata/" + program)
 		if err != nil {
 			t.Fatal(err)
@@ -66,7 +66,7 @@ func TestPrograms(t *testing.T) {
 		Run("rm testdata/" + program)
 
 		// Check if they are equal
-		assertEqual(t, stdoutGo, stdoutTgc, "tinygocompiler and go run should produce the same output on stdout")
-		assertEqual(t, stderrGo, stderrTgc, "tinygocompiler and go run should produce the same output on stderr")
+		assertEqual(t, stdoutGo, stdoutTgc, "go2cpp and go run should produce the same output on stdout")
+		assertEqual(t, stderrGo, stderrTgc, "go2cpp and go run should produce the same output on stderr")
 	}
 }

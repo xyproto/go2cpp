@@ -11,9 +11,9 @@
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
-tinygocompiler
 testdata/hello
 testdata/multiple
 testdata/if
 testdata/contains
 testdata/prefix
+go2cpp
