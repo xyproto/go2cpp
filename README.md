@@ -97,16 +97,16 @@ auto main() -> int
 - [ ] `defer`
 - [x] `else`
 - [x] `fallthrough`
-- [ ] `for`
+- [/] `for`
 - [x] `func`
 - [ ] `go`
 - [x] `goto`
 - [x] `if`
 - [x] `import` (partially)
 - [ ] `interface`
-- [ ] `map`
+- [/] `map`
 - [x] `package` (partially)
-- [ ] `range`
+- [/] `range`
 - [x] `return`
 - [ ] `select`
 - [ ] `struct`
