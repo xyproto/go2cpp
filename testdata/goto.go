@@ -11,8 +11,8 @@ second:
 	fmt.Println("SECOND.")
 	goto done
 first:
-    fmt.Println("FIRST.")
+	fmt.Println("FIRST.")
 	goto second
 done:
-    fmt.Println("DONE.")
+	fmt.Println("DONE.")
 }

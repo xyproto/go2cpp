@@ -44,9 +44,12 @@ func between(s, a, b string) string {
 func LiteralStrings(source string) (output string) {
 	output = source
 	replacements := map[string]string{
-		"\")": "\"s)",
-		"\";": "\"s;",
-		"\",": "\"s,",
+		"\")":  "\"s)",
+		"\";":  "\"s;",
+		"\",":  "\"s,",
+		"\"}":  "\"s}",
+		"\" }": "\"s }",
+		"\" )": "\"s )",
 	}
 	hasLiteral := false
 	for k, v := range replacements {
@@ -260,6 +263,7 @@ func AddIncludes(source string) (output string) {
 		"std::endl":   "iostream",
 		"std::cout":   "iostream",
 		"std::string": "string",
+		"std::size":   "iterator",
 	}
 	includeString := ""
 	for k, v := range includes {
@@ -289,10 +293,47 @@ func TypeReplace(source string) string {
 	return strings.Replace(source, "string", "std::string", -1)
 }
 
-func ForLoop(source string) (output string) {
-	panic("TO IMPLEMENT: FOR LOOP: " + source)
-	output = source
-	return
+func ForLoop(source string) string {
+	expression := strings.TrimSpace(between(source, "for", "{"))
+	// for range, with no comma
+	if strings.Count(expression, ",") == 0 && strings.Contains(expression, "range") {
+		fields := strings.Split(expression, " ")
+		varname := fields[0]
+		listname := fields[len(fields)-1]
+
+		// for i := range l {
+		// -->
+		// for (auto i = 0; i < std::size(l); i++) {
+
+		return "for (auto " + varname + " = 0; " + varname + " < std::size(" + listname + "); " + varname + "++) {"
+	}
+	// for range, over index and element, or key and value
+	if strings.Count(expression, ",") == 1 && strings.Contains(expression, "range") && strings.Contains(expression, ":=") {
+		fields := strings.Split(expression, ":=")
+		varnames := strings.Split(fields[0], ",")
+
+		indexvar := varnames[0]
+		elemvar := varnames[1]
+
+		fields = strings.Split(expression, " ")
+		listname := fields[len(fields)-1]
+
+		return "for (auto " + indexvar + " = 0; " + indexvar + " < std::size(" + listname + "); " + indexvar + "++) {" + "\n" + "auto " + elemvar + " = " + listname + "[" + indexvar + "]"
+	}
+	// not "for" + "range"
+	if strings.Contains(expression, ":=") {
+		if strings.HasPrefix(expression, "_,") && strings.Contains(expression, "range") {
+			// For each, no index
+			varname := between(expression, ",", ":")
+			fields := strings.SplitN(expression, "range ", 2)
+			listname := fields[1]
+			// C++11 and later for each loop
+			expression = "auto &" + varname + " : " + listname
+		} else {
+			expression = "auto " + strings.Replace(expression, ":=", "=", 1)
+		}
+	}
+	return "for (" + expression + ") {"
 }
 
 func SwitchExpressionVariable() string {
@@ -408,7 +449,16 @@ func go2cpp(source string) string {
 			if strings.Contains(left, ",") {
 				newLine = "auto [" + left + "] = " + right
 			} else if declarationAssignment {
-				newLine = "auto " + left + " = " + right
+				if strings.HasPrefix(right, "[]") {
+					if !strings.Contains(right, "{") {
+						panic("UNRECOGNIZED LINE: " + trimmedLine)
+					}
+					theType := TypeReplace(between(right, "]", "{"))
+					fields := strings.SplitN(right, "{", 2)
+					newLine = theType + " " + left + "[] {" + fields[1]
+				} else {
+					newLine = "auto " + left + " = " + right
+				}
 			} else {
 				newLine = left + " = " + right
 			}
@@ -445,6 +495,9 @@ func go2cpp(source string) string {
 		if currentFunctionName == "main" && trimmedLine == "}" && curlyCount == 0 { // curlyCount has already been decreased for this line
 			newLine = strings.Replace(line, "}", "return 0;\n}", 1)
 		}
+		if strings.HasSuffix(trimmedLine, "}") {
+			newLine += "\n"
+		}
 		if (!has(endings, lastchar(trimmedLine)) || strings.Contains(trimmedLine, "=")) && !strings.HasPrefix(trimmedLine, "//") && (!has(endings, lastchar(newLine)) && !strings.Contains(newLine, "//")) {
 			newLine += ";"
 		}
@@ -471,6 +524,14 @@ func main() {
 
 	inputFilename := ""
 	if len(os.Args) > 1 {
+		if os.Args[1] == "--help" {
+			fmt.Println("supported arguments:")
+			fmt.Println(" a .go file as the first argument")
+			fmt.Println("supported options:")
+			fmt.Println(" -o : Format with clang format")
+			fmt.Println(" -O : Don't format with clang format")
+			return
+		}
 		inputFilename = os.Args[1]
 	}
 	if len(os.Args) > 2 {

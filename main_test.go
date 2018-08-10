@@ -17,6 +17,11 @@ var testPrograms = []string{
 	"var",
 	"switch",
 	"goto",
+	"for_regular",
+	"for_range_single",
+	"for_range_list",
+	"for_range_both",
+	//	"for_range_map",
 }
 
 func assertEqual(t *testing.T, a interface{}, b interface{}, message string) {
