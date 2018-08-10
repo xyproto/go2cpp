@@ -100,7 +100,7 @@ auto main() -> int
 - [ ] `for`
 - [x] `func`
 - [ ] `go`
-- [ ] `goto`
+- [x] `goto`
 - [x] `if`
 - [x] `import` (partially)
 - [ ] `interface`
