@@ -497,24 +497,21 @@ func TypeDeclaration(source string) (output string) {
 }
 
 func ConstDeclaration(source string) (output string) {
-	panic("CONST IS NOT IMPLEMENTED YET")
 	output = source
-	if strings.HasPrefix(output, "const ") {
-		output = output[4:]
+	fields := strings.SplitN(source, "=", 2)
+	left := strings.TrimSpace(fields[0])
+	right := strings.TrimSpace(fields[1])
+	words := strings.Split(left, " ")
+	fmt.Println("WORDS", words)
+	if len(words) == 1 {
+		// No type
+		return "const auto " + left + " = " + right
+	} else if len(words) == 2 {
+		// Has a type
+		return "const " + words[1] + " = " + right
 	}
-	if strings.Contains(output, "=") {
-		parts := strings.Split(output, " ")
-		if len(parts) == 4 {
-			output = parts[0] + " " + parts[2] + " " + parts[3]
-		}
-		output = "auto " + output
-	} else {
-		parts := strings.Split(output, " ")
-		if len(parts) == 3 {
-			output = TypeReplace(parts[2]) + " " + parts[1]
-		}
-	}
-	return "CONST HYPE " + output
+	// Weirdness
+	panic("Unrecognized const expression: " + source)
 }
 
 // shouldHash decides if the given type, as a key in an unordered_map, should be hashed

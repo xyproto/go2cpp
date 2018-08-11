@@ -2,14 +2,15 @@ package main
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 	"testing"
 )
 
 var testPrograms = []string{
+	"const",
 	"continue",
 	"if_minus_one",
 	"for_range_both",
@@ -81,16 +82,14 @@ func TestPrograms(t *testing.T) {
 		stdoutTgc, stderrTgc, err := Run("testcases/" + program)
 		if err != nil {
 			cmd := "./go2cpp " + gofile + " -O"
-			if explanation, _, err := Run(cmd); err != nil {
+			if stdoutT, stderrT, err := Run(cmd); err != nil {
 				fmt.Println("TRANSPIPLATION FAILED:", cmd)
-				if strings.Contains(explanation, ": error: ") {
-
-				}
-				fmt.Println(explanation)
+				fmt.Println(stdoutT, stderrT)
 			} else {
 				t.Fatal("go2cpp should not first fail and then succeed! Something is wrong.")
 			}
-			t.Fatal(errors.New("transpiling failed: " + gofile))
+			fmt.Fprintln(os.Stderr, gofile)
+			t.Fatal(err)
 		}
 		Run("rm testcases/" + program)
 
