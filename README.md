@@ -88,7 +88,7 @@ auto main() -> int
 
 ## Keywords
 
-- [ ] `break`
+- [x] `break`
 - [x] `case`
 - [ ] `chan`
 - [ ] `const`

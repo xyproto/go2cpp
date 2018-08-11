@@ -10,24 +10,28 @@ import (
 )
 
 var testPrograms = []string{
-	//"for_range_map_value",
-	"hello",
-	"multiple",
-	"if",
-	"contains",
-	"prefix",
-	"var",
-	"switch",
-	"goto",
-	"for_regular",
-	"for_range_single",
-	"for_range_list",
-	"for_range_both",
+	//"for_range_list",
+	//"for_range_both",
+	"for_range_map_key_value",
+	"for_endless",
+	"for_range_map_value",
 	"for_range_map_key",
+	"for_range_single",
+	"for_regular",
+	"goto",
+	"switch",
+	"var",
+	"prefix",
+	"contains",
+	"if",
+	"multiple",
+	"hello",
 }
 
 // Programs with unordered words as the output
 var unorderedOutput = []string{
+	"for_range_map_key_value",
+	"for_range_map_value",
 	"for_range_map_key",
 }
 
@@ -63,14 +67,14 @@ func TestPrograms(t *testing.T) {
 		gofile := "testdata/" + program + ".go"
 
 		// Program output when running with "go run"
-		fmt.Println("Compiling and running " + gofile + " with go...")
+		fmt.Println("[go  ] Compiling and running " + gofile + " (using go run)...")
 		stdoutGo, stderrGo, err := Run("go run " + gofile)
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		// Program output when compiling with go2cpp and running the executable
-		fmt.Println("Compiling and running " + gofile + " with go2cpp and g++...")
+		fmt.Println("[ c++] Compiling and running " + gofile + " (using go2cpp and g++)...")
 		Run("./go2cpp " + gofile + " -o testdata/" + program)
 		stdoutTgc, stderrTgc, err := Run("testdata/" + program)
 		if err != nil {
@@ -105,7 +109,7 @@ func TestPrograms(t *testing.T) {
 					assertEqual(t, stdoutGo, stdoutTgc, "go2cpp and go run should produce the same list of words on stdout")
 				}
 			}
-			return
+			continue
 		}
 
 		// Check if they are equal

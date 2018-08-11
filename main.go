@@ -214,7 +214,7 @@ func PrintStatement(source string) (output string) {
 		// Invalid print line, no function call
 		return output
 	}
-	elems := strings.SplitN(source, "(", 2)
+	elems := strings.SplitN(strings.TrimSpace(source), "(", 2)
 	name := strings.TrimSpace(elems[0])
 	args := strings.TrimSpace(elems[1])
 	if strings.HasSuffix(args, ")") {
@@ -222,16 +222,33 @@ func PrintStatement(source string) (output string) {
 	}
 	// fmt.Println, fmt.Print
 	if strings.HasPrefix(name, "print") {
-		output = "std::cerr"
+		output = "std::cerr << "
 	} else {
-		output = "std::cout"
+		output = "std::cout << "
 	}
 	if len(args) == 0 {
 		// fmt.Println() or fmt.Print()
-		return output + " << std::endl"
+		return output + "std::endl"
 	}
-	// Output booleans as "true" and "false" instead of as numbers
-	output += " << std::boolalpha << "
+	// Check if all elements that are to be printed are strings
+	onlyStrings := false
+	if len(elems) > 1 {
+		allElementsStartsWithQuote := true
+		for _, elem := range elems[1:] {
+			if !strings.HasPrefix(elem, "\"") {
+				allElementsStartsWithQuote = false
+				break
+			}
+		}
+		onlyStrings = allElementsStartsWithQuote
+	}
+	// TODO: Use boolalpha only when there are booleans values, boolean variables or
+	//       boolean expressions involved. This can be hard to detect. Detect at
+	//       runtime in C++ instead?
+	if !onlyStrings {
+		// Output booleans as "true" and "false" instead of as numbers
+		output += "std::boolalpha << "
+	}
 	// Don't split on commas that are within paranthesis or quotes
 	withinPar := 0
 	withinQuot := false
@@ -307,8 +324,29 @@ func TypeReplace(source string) string {
 	return output
 }
 
+// TODO: Make sure all variations are covered:
+// * [_] for _ = range list {
+// * [_] for i := range list {
+// * [_] for i, v := range list {
+// * [_] for _, v := range list {
+// * [_] for i, _ := range list {
+// * [_] for _, _ = range list {
+// * [_] for _ = range map {
+// * [_] for k := range map {
+// * [_] for k, v := range map {
+// * [_] for _, v := range map {
+// * [_] for k, _ := range map {
+// * [_] for _, _ = range map {
+// * [_] for i := 0; i < 10; i++ {
+// * [_] for {
+// * [_] for ;; {
+// * not possible: for x := range 10 {
 func ForLoop(source string, encounteredHashMaps []string) string {
 	expression := strings.TrimSpace(between(source, "for", "{"))
+	if expression == "" {
+		// endless loop
+		return "for (;;) {"
+	}
 	// for range, with no comma
 	if strings.Count(expression, ",") == 0 && strings.Contains(expression, "range") {
 		fields := strings.Split(expression, " ")
@@ -319,11 +357,14 @@ func ForLoop(source string, encounteredHashMaps []string) string {
 		// -->
 		// for (auto i = 0; i < std::size(l); i++) {
 
-		if has(encounteredHashMaps, listName) {
-			hashMapName := listName
+		hashMapName := listName
+		if has(encounteredHashMaps, hashMapName) {
 			// looping over the key of a hash map, not over the index of a list
 			hashMapHashKey := varName + hashMapSuffix + keysSuffix
 			return "for (auto " + hashMapHashKey + " : " + hashMapName + keysSuffix + ") {" + "\n" + "auto " + varName + " = " + hashMapHashKey + ".second"
+		} else if varName == "_" {
+			// TODO: Loop over values in list
+			panic("TO IMPLEMENT: for _, v := range list")
 		} else {
 			// looping over the index of a list
 			return "for (std::size_t " + varName + " = 0; " + varName + " < std::size(" + listName + "); " + varName + "++) {"
@@ -338,9 +379,22 @@ func ForLoop(source string, encounteredHashMaps []string) string {
 		elemvar := varnames[1]
 
 		fields = strings.Split(expression, " ")
-		listname := fields[len(fields)-1]
+		listName := fields[len(fields)-1]
+		hashMapName := listName
 
-		return "for (std::size_t " + indexvar + " = 0; " + indexvar + " < std::size(" + listname + "); " + indexvar + "++) {" + "\n" + "auto " + elemvar + " = " + listname + "[" + indexvar + "]"
+		if has(encounteredHashMaps, hashMapName) {
+			if indexvar == "_" {
+				// looping over the values of a hash map
+				hashMapHashKey := hashMapName + hashMapSuffix
+				return "for (auto " + hashMapHashKey + " : " + hashMapName + ") {" + "\n" + "auto " + elemvar + " = " + hashMapHashKey + ".second"
+			}
+			// for k, v := range m
+			keyvar := indexvar
+			hashMapHashKey := keyvar + hashMapSuffix + keysSuffix
+			return "for (auto " + hashMapHashKey + " : " + hashMapName + keysSuffix + ") {" + "\n" + "auto " + keyvar + " = " + hashMapHashKey + ".second;\nauto " + elemvar + " = " + hashMapName + ".at(" + hashMapHashKey + ".first)"
+		}
+
+		return "for (std::size_t " + indexvar + " = 0; " + indexvar + " < std::size(" + listName + "); " + indexvar + "++) {" + "\n" + "auto " + elemvar + " = " + listName + ".at(" + indexvar + ")"
 	}
 	// not "for" + "range"
 	if strings.Contains(expression, ":=") {
@@ -420,8 +474,10 @@ func shouldHash(keyType string) bool {
 }
 
 // HashElements transforms the contents of a map in Go to the contents of an unordered_map in C++
-// keyType is the type of the key, for instance "std::string"
-func HashElements(source string, keyType string, keyForBoth bool) string {
+// keyType is the type of the key, in C++, for instance "std::string"
+// if keyForBoth is true, a hash(key)->key map is created,
+// if not, a hash(key)->value map is created.
+func HashElements(source, keyType string, keyForBoth bool) string {
 	if !strings.Contains(source, ",") {
 		return source
 	}
