@@ -10,6 +10,7 @@ import (
 )
 
 var testPrograms = []string{
+	//"for_range_map_value",
 	"hello",
 	"multiple",
 	"if",
@@ -22,8 +23,12 @@ var testPrograms = []string{
 	"for_range_single",
 	"for_range_list",
 	"for_range_both",
-	//"for_range_map1",
-	//"for_range_map2",
+	"for_range_map_key",
+}
+
+// Programs with unordered words as the output
+var unorderedOutput = []string{
+	"for_range_map_key",
 }
 
 func assertEqual(t *testing.T, a interface{}, b interface{}, message string) {
@@ -82,6 +87,26 @@ func TestPrograms(t *testing.T) {
 			t.Fatal(errors.New("transpiling failed: " + gofile))
 		}
 		Run("rm testdata/" + program)
+
+		// For some test-programs, assume the order of the outputted words are random
+		// And only check stdout.
+		if has(unorderedOutput, program) {
+			words1 := strings.Split(strings.TrimSpace(stdoutGo), " ")
+			words2 := strings.Split(strings.TrimSpace(stdoutTgc), " ")
+			for _, word := range words1 {
+				if !has(words2, word) {
+					fmt.Println(words2, "DOES NOT HAVE", word)
+					assertEqual(t, stdoutGo, stdoutTgc, "go2cpp and go run should produce the same list of words on stdout")
+				}
+			}
+			for _, word := range words2 {
+				if !has(words1, word) {
+					fmt.Println(words1, "DOES NOT HAVE", word)
+					assertEqual(t, stdoutGo, stdoutTgc, "go2cpp and go run should produce the same list of words on stdout")
+				}
+			}
+			return
+		}
 
 		// Check if they are equal
 		assertEqual(t, stdoutGo, stdoutTgc, "go2cpp and go run should produce the same output on stdout")

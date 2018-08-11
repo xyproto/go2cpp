@@ -18,6 +18,9 @@ import (
 
 const tupleType = "std::tuple"
 
+const hashMapSuffix = "_hash"
+const keysSuffix = "_keys"
+
 var endings = []string{"{", ",", "}", ":"}
 
 var (
@@ -304,19 +307,27 @@ func TypeReplace(source string) string {
 	return output
 }
 
-func ForLoop(source string) string {
+func ForLoop(source string, encounteredHashMaps []string) string {
 	expression := strings.TrimSpace(between(source, "for", "{"))
 	// for range, with no comma
 	if strings.Count(expression, ",") == 0 && strings.Contains(expression, "range") {
 		fields := strings.Split(expression, " ")
-		varname := fields[0]
-		listname := fields[len(fields)-1]
+		varName := fields[0]
+		listName := fields[len(fields)-1]
 
 		// for i := range l {
 		// -->
 		// for (auto i = 0; i < std::size(l); i++) {
 
-		return "for (std::size_t " + varname + " = 0; " + varname + " < std::size(" + listname + "); " + varname + "++) {"
+		if has(encounteredHashMaps, listName) {
+			hashMapName := listName
+			// looping over the key of a hash map, not over the index of a list
+			hashMapHashKey := varName + hashMapSuffix + keysSuffix
+			return "for (auto " + hashMapHashKey + " : " + hashMapName + keysSuffix + ") {" + "\n" + "auto " + varName + " = " + hashMapHashKey + ".second"
+		} else {
+			// looping over the index of a list
+			return "for (std::size_t " + varName + " = 0; " + varName + " < std::size(" + listName + "); " + varName + "++) {"
+		}
 	}
 	// for range, over index and element, or key and value
 	if strings.Count(expression, ",") == 1 && strings.Contains(expression, "range") && strings.Contains(expression, ":=") {
@@ -410,7 +421,7 @@ func shouldHash(keyType string) bool {
 
 // HashElements transforms the contents of a map in Go to the contents of an unordered_map in C++
 // keyType is the type of the key, for instance "std::string"
-func HashElements(source string, keyType string) string {
+func HashElements(source string, keyType string, keyForBoth bool) string {
 	if !strings.Contains(source, ",") {
 		return source
 	}
@@ -428,7 +439,13 @@ func HashElements(source string, keyType string) string {
 			panic("This should be two elements, separated by a colon: " + pair)
 		}
 		if shouldHash(keyType) {
-			output += "{std::hash<" + keyType + ">{}(" + pair_elements[0] + "), " + pair_elements[1] + "}"
+			if keyForBoth {
+				// Create the lements for a hash map from hash(key) -> key
+				output += "{std::hash<" + keyType + ">{}(" + pair_elements[0] + "), " + pair_elements[0] + "}"
+			} else {
+				// Create the elements for a hash map from hash(key) -> value
+				output += "{std::hash<" + keyType + ">{}(" + pair_elements[0] + "), " + pair_elements[1] + "}"
+			}
 		} else {
 			output += "{" + pair_elements[0] + ", " + pair_elements[1] + "}"
 		}
@@ -444,6 +461,9 @@ func go2cpp(source string) string {
 	inImport := false
 	curlyCount := 0
 	inVar := false
+	// Keep track of encountered hash maps
+	// TODO: Use reflection instead to loop either one way or the other. The hash map may be defined in another package.
+	encounteredHashMaps := []string{}
 	for _, line := range strings.Split(source, "\n") {
 		newLine := line
 		trimmedLine := strings.TrimSpace(line)
@@ -469,7 +489,7 @@ func go2cpp(source string) string {
 		} else if strings.HasPrefix(trimmedLine, "func") {
 			newLine, currentReturnType, currentFunctionName = FunctionSignature(trimmedLine)
 		} else if strings.HasPrefix(trimmedLine, "for") {
-			newLine = ForLoop(line)
+			newLine = ForLoop(line, encounteredHashMaps)
 		} else if strings.HasPrefix(trimmedLine, "switch") {
 			newLine = Switch(line)
 		} else if strings.HasPrefix(trimmedLine, "case") {
@@ -497,7 +517,8 @@ func go2cpp(source string) string {
 			} else if declarationAssignment {
 				if strings.HasPrefix(right, "[]") {
 					if !strings.Contains(right, "{") {
-						panic("UNRECOGNIZED LINE: " + trimmedLine)
+						fmt.Fprintln(os.Stderr, "UNRECOGNIZED LINE: "+trimmedLine)
+						newLine = line
 					}
 					theType := TypeReplace(between(right, "]", "{"))
 					fields := strings.SplitN(right, "{", 2)
@@ -506,13 +527,19 @@ func go2cpp(source string) string {
 					keyType := TypeReplace(between(right, "map[", "]"))
 					valueType := TypeReplace(between(right, "]", "{"))
 					elements := between(right, "{", "}")
+					hashName := strings.TrimSpace(left)
 					if shouldHash(keyType) {
-						newLine = "std::unordered_map<std::size_t, " + valueType + "> " + left + HashElements(elements, keyType)
+						// For this case, the key can not be used as the hash map key for std::unordered_map.
+						// Create two hash maps, one for hash(key)->value and one for hash(key)->key.
+						newLine = "std::unordered_map<std::size_t, " + valueType + "> " + hashName + HashElements(elements, keyType, false) + ";\n"
+						newLine += "std::unordered_map<std::size_t, " + keyType + "> " + hashName + keysSuffix + HashElements(elements, keyType, true)
+						encounteredHashMaps = append(encounteredHashMaps, hashName)
 					} else {
-						newLine = "std::unordered_map<" + keyType + ", " + valueType + "> " + left + HashElements(elements, keyType)
+						newLine = "std::unordered_map<" + keyType + ", " + valueType + "> " + hashName + HashElements(elements, keyType, false)
+						encounteredHashMaps = append(encounteredHashMaps, hashName)
 					}
 				} else {
-					newLine = "auto " + left + " = " + right
+					newLine = "auto " + strings.TrimSpace(left) + " = " + strings.TrimSpace(right)
 				}
 			} else {
 				newLine = left + " = " + right
@@ -616,7 +643,7 @@ func main() {
 
 	cppSource := ""
 	if clangFormat {
-		cmd := exec.Command("clang-format", "-style={BasedOnStyle: Webkit, ColumnLimit: 90}")
+		cmd := exec.Command("clang-format", "-style={BasedOnStyle: Webkit, ColumnLimit: 99}")
 		cmd.Stdin = strings.NewReader(go2cpp(string(sourceData)))
 		var out bytes.Buffer
 		cmd.Stdout = &out
