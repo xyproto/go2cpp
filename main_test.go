@@ -10,6 +10,7 @@ import (
 )
 
 var testPrograms = []string{
+	"if_minus_one",
 	"for_range_both",
 	"for_range_map_key_value",
 	"for_endless",
@@ -64,7 +65,7 @@ func Run(cmdString string) (string, string, error) {
 func TestPrograms(t *testing.T) {
 	Run("go build")
 	for _, program := range testPrograms {
-		gofile := "testdata/" + program + ".go"
+		gofile := "testcases/" + program + ".go"
 
 		// Program output when running with "go run"
 		fmt.Println("[go  ] Compiling and running " + gofile + " (using go run)...")
@@ -75,8 +76,8 @@ func TestPrograms(t *testing.T) {
 
 		// Program output when compiling with go2cpp and running the executable
 		fmt.Println("[ c++] Compiling and running " + gofile + " (using go2cpp and g++)...")
-		Run("./go2cpp " + gofile + " -o testdata/" + program)
-		stdoutTgc, stderrTgc, err := Run("testdata/" + program)
+		Run("./go2cpp " + gofile + " -o testcases/" + program)
+		stdoutTgc, stderrTgc, err := Run("testcases/" + program)
 		if err != nil {
 			cmd := "./go2cpp " + gofile + " -O"
 			if explanation, _, err := Run(cmd); err != nil {
@@ -90,7 +91,7 @@ func TestPrograms(t *testing.T) {
 			}
 			t.Fatal(errors.New("transpiling failed: " + gofile))
 		}
-		Run("rm testdata/" + program)
+		Run("rm testcases/" + program)
 
 		// For some test-programs, assume the order of the outputted words are random
 		// And only check stdout.
