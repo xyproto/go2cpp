@@ -10,6 +10,7 @@ import (
 )
 
 var testPrograms = []string{
+	"continue",
 	"if_minus_one",
 	"for_range_both",
 	"for_range_map_key_value",

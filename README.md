@@ -92,7 +92,7 @@ auto main() -> int
 - [x] `case`
 - [ ] `chan`
 - [ ] `const`
-- [ ] `continue`
+- [x] `continue`
 - [x] `default`
 - [ ] `defer`
 - [x] `else`
