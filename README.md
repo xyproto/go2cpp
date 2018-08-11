@@ -2,20 +2,23 @@
 
 Compiles Go to native executables via C++17.
 
-Produces small executables by default.
+One of the goals is for the compiler to become self-hosting.
 
 ## Known issues
 
-* Only works with extremely simple code samples, for now.
-* Does not use an AST, deals mainly with strings, for now.
+* Only works with simple code samples, for now.
+* Very few functions from the Go standard library are implemented.
+* A plan for how to do "import" is needed.
 
-## Features
+## Features and limitations
 
 * Pretty fast.
 * Simple to use.
-* Only uses to Go standard library, no external packages (but depends on `g++` and `clang-format`).
+* Few dependencies (for compiling `go2cpp`, only the go compiler is needed).
 * Low complexity.
 * Short source code.
+* `g++` is used for compiling the generated C++ code.
+* `clang-format` is used for formatting the generated C++ code.
 
 ## Usage
 
@@ -41,17 +44,17 @@ Output what the intermediate C++17 code looks like:
 package main
 
 import (
-	"fmt"
+    "fmt"
 )
 
 func addsub(x int) (a, b int) {
-	return x + 2, x - 2
+    return x + 2, x - 2
 }
 
 func main() {
-	y, z := addsub(4)
-	fmt.Println("y =", y)
-	fmt.Println("z =", z)
+    y, z := addsub(4)
+    fmt.Println("y =", y)
+    fmt.Println("z =", z)
 }
 ```
 
