@@ -567,7 +567,7 @@ func go2cpp(source string) string {
 			}
 		} else if strings.HasPrefix(trimmedLine, "fmt.Print") || strings.HasPrefix(trimmedLine, "print") {
 			newLine = PrintStatement(line)
-		} else if strings.Contains(trimmedLine, "=") && !strings.HasPrefix(trimmedLine, "var ") {
+		} else if strings.Contains(trimmedLine, "=") && !strings.HasPrefix(trimmedLine, "var ") && !strings.HasPrefix(trimmedLine, "if ") {
 			elem := strings.Split(trimmedLine, "=")
 			left := strings.TrimSpace(elem[0])
 			declarationAssignment := false
