@@ -475,6 +475,48 @@ func VarDeclaration(source string) (output string) {
 	return output
 }
 
+func TypeDeclaration(source string) (output string) {
+	panic("TYPE IS NOT IMPLEMENTED YET")
+	output = source
+	if strings.HasPrefix(output, "type ") {
+		output = output[4:]
+	}
+	if strings.Contains(output, "=") {
+		parts := strings.Split(output, " ")
+		if len(parts) == 4 {
+			output = parts[0] + " " + parts[2] + " " + parts[3]
+		}
+		output = "auto " + output
+	} else {
+		parts := strings.Split(output, " ")
+		if len(parts) == 3 {
+			output = TypeReplace(parts[2]) + " " + parts[1]
+		}
+	}
+	return "TYPE HYPE " + output
+}
+
+func ConstDeclaration(source string) (output string) {
+	panic("CONST IS NOT IMPLEMENTED YET")
+	output = source
+	if strings.HasPrefix(output, "const ") {
+		output = output[4:]
+	}
+	if strings.Contains(output, "=") {
+		parts := strings.Split(output, " ")
+		if len(parts) == 4 {
+			output = parts[0] + " " + parts[2] + " " + parts[3]
+		}
+		output = "auto " + output
+	} else {
+		parts := strings.Split(output, " ")
+		if len(parts) == 3 {
+			output = TypeReplace(parts[2]) + " " + parts[1]
+		}
+	}
+	return "CONST HYPE " + output
+}
+
 // shouldHash decides if the given type, as a key in an unordered_map, should be hashed
 func shouldHash(keyType string) bool {
 	// TODO: Check if always using std::hash makes sense, or only for some types (then which ones?)
@@ -523,8 +565,10 @@ func go2cpp(source string) string {
 	currentReturnType := ""
 	currentFunctionName := ""
 	inImport := false
-	curlyCount := 0
 	inVar := false
+	inType := false
+	inConst := false
+	curlyCount := 0
 	// Keep track of encountered hash maps
 	// TODO: Use reflection instead to loop either one way or the other. The hash map may be defined in another package.
 	encounteredHashMaps := []string{}
@@ -548,8 +592,18 @@ func go2cpp(source string) string {
 		} else if inVar && strings.Contains(trimmedLine, ")") {
 			inVar = false
 			continue
+		} else if inType && strings.Contains(trimmedLine, ")") {
+			inType = false
+			continue
+		} else if inConst && strings.Contains(trimmedLine, ")") {
+			inConst = false
+			continue
 		} else if inVar {
 			newLine = VarDeclaration(line)
+		} else if inType {
+			newLine = TypeDeclaration(line)
+		} else if inConst {
+			newLine = ConstDeclaration(line)
 		} else if strings.HasPrefix(trimmedLine, "func") {
 			newLine, currentReturnType, currentFunctionName = FunctionSignature(trimmedLine)
 		} else if strings.HasPrefix(trimmedLine, "for") {
@@ -626,8 +680,18 @@ func go2cpp(source string) string {
 		} else if trimmedLine == "var (" {
 			inVar = true
 			continue
+		} else if trimmedLine == "type (" {
+			inType = true
+			continue
+		} else if trimmedLine == "const (" {
+			inConst = true
+			continue
 		} else if strings.HasPrefix(trimmedLine, "var ") {
 			newLine = VarDeclaration(line)
+		} else if strings.HasPrefix(trimmedLine, "type ") {
+			newLine = TypeDeclaration(line)
+		} else if strings.HasPrefix(trimmedLine, "const ") {
+			newLine = ConstDeclaration(line)
 		} else if trimmedLine == "fallthrough" {
 			newLine = "goto " + LabelName() + "; // fallthrough"
 			switchLabel = LabelName()
