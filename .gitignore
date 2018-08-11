@@ -17,3 +17,4 @@ testdata/if
 testdata/contains
 testdata/prefix
 go2cpp
+test/

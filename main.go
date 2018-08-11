@@ -18,8 +18,12 @@ import (
 
 const tupleType = "std::tuple"
 
-const hashMapSuffix = "_hash"
-const keysSuffix = "_keys"
+const (
+	hashMapSuffix = "_h__"
+	keysSuffix    = "_k__"
+	switchPrefix  = "_s__"
+	labelPrefix   = "_l__"
+)
 
 var endings = []string{"{", ",", "}", ":"}
 
@@ -394,7 +398,11 @@ func ForLoop(source string, encounteredHashMaps []string) string {
 			return "for (auto " + hashMapHashKey + " : " + hashMapName + keysSuffix + ") {" + "\n" + "auto " + keyvar + " = " + hashMapHashKey + ".second;\nauto " + elemvar + " = " + hashMapName + ".at(" + hashMapHashKey + ".first)"
 		}
 
-		return "for (std::size_t " + indexvar + " = 0; " + indexvar + " < std::size(" + listName + "); " + indexvar + "++) {" + "\n" + "auto " + elemvar + " = " + listName + ".at(" + indexvar + ")"
+		if indexvar == "_" {
+			return "for (auto " + elemvar + " : " + listName + ") {"
+		} else {
+			return "for (std::size_t " + indexvar + " = 0; " + indexvar + " < std::size(" + listName + "); " + indexvar + "++) {" + "\n" + "auto " + elemvar + " = " + listName + "[" + indexvar + "]"
+		}
 	}
 	// not "for" + "range"
 	if strings.Contains(expression, ":=") {
@@ -413,11 +421,11 @@ func ForLoop(source string, encounteredHashMaps []string) string {
 }
 
 func SwitchExpressionVariable() string {
-	return "_s__" + strconv.Itoa(switchExpressionCounter)
+	return switchPrefix + strconv.Itoa(switchExpressionCounter)
 }
 
 func LabelName() string {
-	return "_l__" + strconv.Itoa(labelCounter)
+	return labelPrefix + strconv.Itoa(labelCounter)
 }
 
 func Switch(source string) (output string) {
@@ -575,10 +583,11 @@ func go2cpp(source string) string {
 					if !strings.Contains(right, "{") {
 						fmt.Fprintln(os.Stderr, "UNRECOGNIZED LINE: "+trimmedLine)
 						newLine = line
+
 					}
 					theType := TypeReplace(between(right, "]", "{"))
 					fields := strings.SplitN(right, "{", 2)
-					newLine = theType + " " + left + "[] {" + fields[1]
+					newLine = theType + " " + strings.TrimSpace(left) + "[] {" + fields[1]
 				} else if strings.HasPrefix(right, "map[") {
 					keyType := TypeReplace(between(right, "map[", "]"))
 					valueType := TypeReplace(between(right, "]", "{"))

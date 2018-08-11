@@ -10,13 +10,13 @@ import (
 )
 
 var testPrograms = []string{
-	//"for_range_list",
-	//"for_range_both",
+	"for_range_both",
 	"for_range_map_key_value",
 	"for_endless",
 	"for_range_map_value",
 	"for_range_map_key",
 	"for_range_single",
+	"for_range_list",
 	"for_regular",
 	"goto",
 	"switch",

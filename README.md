@@ -97,7 +97,7 @@ auto main() -> int
 - [ ] `defer`
 - [x] `else`
 - [x] `fallthrough`
-- [/] `for`
+- [x] `for`
 - [x] `func`
 - [ ] `go`
 - [x] `goto`
@@ -106,7 +106,7 @@ auto main() -> int
 - [ ] `interface`
 - [/] `map`
 - [x] `package` (partially)
-- [/] `range`
+- [x] `range`
 - [x] `return`
 - [ ] `select`
 - [ ] `struct`
