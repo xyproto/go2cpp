@@ -332,25 +332,39 @@ func ElseIfSentence(source string) (output string) {
 }
 
 func TypeReplace(source string) string {
-	output := source
-	output = strings.Replace(output, "string", "std::string", -1)
-	output = strings.Replace(output, "float64", "double", -1)
-	output = strings.Replace(output, "float32", "float", -1)
-	output = strings.Replace(output, "int64", "std::int64_t", -1)
-	output = strings.Replace(output, "int32", "std::int32_t", -1)
-	output = strings.Replace(output, "int16", "std::int16_t", -1)
-	output = strings.Replace(output, "int8", "std::int8_t", -1)
-	output = strings.Replace(output, "uint64", "std::uint64_t", -1)
-	output = strings.Replace(output, "uint32", "std::uint32_t", -1)
-	output = strings.Replace(output, "uint16", "std::uint16_t", -1)
-	output = strings.Replace(output, "uint8", "std::uint8_t", -1)
-	output = strings.Replace(output, "byte", "std::uint8_t", -1)
-	output = strings.Replace(output, "rune", "std::int32_t", -1)
-	output = strings.Replace(output, "uint", "unsigned int", -1)
-	// TODO: Check that uintptr works as expected
-	output = strings.Replace(output, "uintptr", "unsigned int", -1)
-	// TODO: complex64, complex128
-	return output
+	// TODO: uintptr, complex64 and complex128
+	switch strings.TrimSpace(source) {
+	case "string":
+		return "std::string"
+	case "float64":
+		return "double"
+	case "float32":
+		return "float"
+	case "uint64":
+		return "std::uint64_t"
+	case "uint32":
+		return "std::uint32_t"
+	case "uint16":
+		return "std::uint16_t"
+	case "uint8":
+		return "std::uint8_t"
+	case "int64":
+		return "std::int64_t"
+	case "int32":
+		return "std::int32_t"
+	case "int16":
+		return "std::int16_t"
+	case "int8":
+		return "std::int8_t"
+	case "byte":
+		return "std::uint8_t"
+	case "rune":
+		return "std::int32_t"
+	case "uint":
+		return "unsigned int"
+	default:
+		return source
+	}
 }
 
 // TODO: Make sure all variations are covered:
@@ -480,44 +494,51 @@ func Case(source string) (output string) {
 	return output
 }
 
-func VarDeclaration(source string) (output string) {
-	output = source
-	if strings.HasPrefix(output, "var ") {
-		output = output[4:]
-	}
-	if strings.Contains(output, "=") {
-		parts := strings.Split(output, " ")
-		if len(parts) == 4 {
-			output = parts[0] + " " + parts[2] + " " + parts[3]
+func VarDeclaration(source string) string {
+	if strings.Contains(source, "=") {
+		parts := strings.SplitN(strings.TrimSpace(source), "=", 2)
+		left := parts[0]
+		right := strings.TrimSpace(parts[1])
+		fields := strings.Split(left, " ")
+		if fields[0] == "var" {
+			fields = fields[1:]
 		}
-		output = "auto " + output
+		if len(fields) > 2 {
+			return TypeReplace(fields[1]) + " " + fields[0] + " " + strings.Join(fields[2:], " ") + " = " + right
+		} else if len(fields) == 2 {
+			return TypeReplace(fields[1]) + " " + fields[0] + " = " + right
+		} else {
+			return "auto" + " " + fields[0] + " = " + right
+		}
 	} else {
-		parts := strings.Split(output, " ")
-		if len(parts) == 3 {
-			output = TypeReplace(parts[2]) + " " + parts[1]
+		fields := strings.Split(strings.TrimSpace(source), " ")
+		if fields[0] == "var" {
+			fields = fields[1:]
+		}
+		if len(fields) == 2 {
+			return TypeReplace(fields[1]) + " " + fields[0]
 		}
 	}
-	return output
+	// Unrecognized
+	panic("Unrecognized var declaration: " + source)
 }
 
-func TypeDeclaration(source string) (output string) {
-	output = source
-	fields := strings.SplitN(source, "=", 2)
+func TypeDeclaration(source string) string {
+	fields := strings.Split(strings.TrimSpace(source), " ")
+	if fields[0] == "type" {
+		fields = fields[1:]
+	}
 	left := strings.TrimSpace(fields[0])
 	right := strings.TrimSpace(fields[1])
 	words := strings.Split(left, " ")
 	if len(words) == 1 {
 		// No type
-		return "using " + left + " = " + right
+		return "using " + left + " = " + TypeReplace(right)
 	} else if len(words) == 2 {
-		if words[0] == "type" {
-			return "using " + " " + words[1] + " = " + right
-		} else {
-			return "using " + TypeReplace(words[1]) + " " + words[0] + " = " + right
-		}
+		return "using " + words[1] + " " + words[0] + " = " + TypeReplace(right)
 	}
 	// Unrecognized
-	panic("Unrecognized type expression: " + source)
+	panic("Unrecognized type declaration: " + source)
 }
 
 func ConstDeclaration(source string) (output string) {

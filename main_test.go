@@ -5,12 +5,18 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 )
 
+const testcaseDirectory = "testcases/"
+
 var testPrograms = []string{
-	"type",
+	"var",
+	"output_char",
+	"printf",
+	"types",
 	"var_zero",
 	"const",
 	"continue",
@@ -25,7 +31,6 @@ var testPrograms = []string{
 	"for_regular",
 	"goto",
 	"switch",
-	"var",
 	"prefix",
 	"contains",
 	"if",
@@ -66,10 +71,19 @@ func Run(cmdString string) (string, string, error) {
 	return outputStdout.String(), outputStderr.String(), nil
 }
 
+func exists(filename string) bool {
+	_, err := os.Stat(filename)
+	return err == nil
+}
+
 func TestPrograms(t *testing.T) {
 	Run("go build")
 	for _, program := range testPrograms {
-		gofile := "testcases/" + program + ".go"
+		gofile := filepath.Join(testcaseDirectory, program+".go")
+
+		if !exists(gofile) {
+			t.Fatal(gofile + " does not exist!")
+		}
 
 		// Program output when running with "go run"
 		fmt.Println("[go  ] Compiling and running " + gofile + " (using go run)...")
@@ -80,8 +94,8 @@ func TestPrograms(t *testing.T) {
 
 		// Program output when compiling with go2cpp and running the executable
 		fmt.Println("[ c++] Compiling and running " + gofile + " (using go2cpp and g++)...")
-		Run("./go2cpp " + gofile + " -o testcases/" + program)
-		stdoutTgc, stderrTgc, err := Run("testcases/" + program)
+		Run("./go2cpp " + gofile + " -o " + filepath.Join(testcaseDirectory, program))
+		stdoutTgc, stderrTgc, err := Run(filepath.Join(testcaseDirectory, program))
 		if err != nil {
 			cmd := "./go2cpp " + gofile + " -O"
 			if stdoutT, stderrT, err := Run(cmd); err != nil {
@@ -93,7 +107,7 @@ func TestPrograms(t *testing.T) {
 			fmt.Fprintln(os.Stderr, gofile)
 			t.Fatal(err)
 		}
-		Run("rm testcases/" + program)
+		Run("rm " + filepath.Join(testcaseDirectory, program))
 
 		// For some test-programs, assume the order of the outputted words are random
 		// And only check stdout.

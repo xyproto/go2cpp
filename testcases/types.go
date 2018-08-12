@@ -12,12 +12,13 @@ type (
 	i16 int16
 )
 
-type string snakestring
+type snakestring string
 
 func main() {
 	var sss snakestring = "sssssss"
 	var (
 		n u8 = 255
 	)
-	fmt.Println(n, snakestring)
+	var i int = n
+	fmt.Println(i, sss)
 }
