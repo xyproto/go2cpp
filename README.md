@@ -2,7 +2,7 @@
 
 Compiles Go to native executables via C++17.
 
-One of the goals is for the compiler to become self-hosting.
+One of the goals is for the compiler to be able to compile itself.
 
 ## Known issues
 
@@ -94,7 +94,7 @@ auto main() -> int
 - [x] `break`
 - [x] `case`
 - [ ] `chan`
-- [ ] `const`
+- [x] `const`
 - [x] `continue`
 - [x] `default`
 - [ ] `defer`
@@ -107,7 +107,7 @@ auto main() -> int
 - [x] `if`
 - [x] `import` (partially)
 - [ ] `interface`
-- [/] `map`
+- [x] `map` (needs more testing)
 - [x] `package` (partially)
 - [x] `range`
 - [x] `return`
