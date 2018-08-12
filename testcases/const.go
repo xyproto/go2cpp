@@ -19,5 +19,6 @@ func main() {
 		f int     = 42
 		g float64 = 3.14
 	)
-	fmt.Println(a, b, c, d, e, f, g)
+	const h = "asdf"
+	fmt.Println(a, b, c, d, e, f, g, h)
 }
