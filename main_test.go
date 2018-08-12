@@ -13,9 +13,10 @@ import (
 const testcaseDirectory = "testcases/"
 
 var testPrograms = []string{
+	"output_char2",
 	"var",
-	"output_char",
 	"var_zero",
+	"output_char",
 	"const",
 	"continue",
 	"printf",

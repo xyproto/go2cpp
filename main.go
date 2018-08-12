@@ -245,14 +245,15 @@ func PrintStatement(source string) (output string) {
 		args = args[:len(args)-1]
 	}
 	// fmt.Println, fmt.Print
+	outputStart := ""
 	if strings.HasPrefix(name, "print") {
-		output = "std::cerr << "
+		outputStart = "std::cerr << "
 	} else {
-		output = "std::cout << "
+		outputStart = "std::cout << "
 	}
 	if len(args) == 0 {
 		// fmt.Println() or fmt.Print()
-		return output + "std::endl"
+		return outputStart + "std::endl"
 	}
 
 	// Don't split on commas that are within paranthesis or quotes
@@ -272,6 +273,7 @@ func PrintStatement(source string) (output string) {
 	}
 	//fmt.Println(args)
 	//fmt.Println(commaPos)
+
 	if len(commaPos) > 0 {
 		parts := splitAtAndTrim(args, commaPos)
 		// Check if all elements that are to be printed are strings
@@ -291,7 +293,7 @@ func PrintStatement(source string) (output string) {
 		//       runtime in C++ instead?
 		if !onlyStrings {
 			// Output booleans as "true" and "false" instead of as numbers
-			output += "std::boolalpha << "
+			outputStart += "std::boolalpha << "
 		}
 		s := ""
 		first := true
@@ -304,6 +306,7 @@ func PrintStatement(source string) (output string) {
 			if strings.HasPrefix(part, "\"") {
 				s += part
 			} else if LikelyVarName(part) {
+				panic("TO IMPLEMENT, using \"if constexpr\"")
 				s += "(typeid(" + part + ") == typeid(uint8_t) || typeid(" + part + ") == typeid(char) ? +" + part + " : " + part + ")"
 			} else {
 				s += part
@@ -313,19 +316,21 @@ func PrintStatement(source string) (output string) {
 		//s := strings.Join(parts, " << \" \" << ")
 		//fmt.Println(s)
 
-		output += s
+		output = outputStart + output + s
 	} else {
 		if strings.HasPrefix(args, "\"") {
 			output += args
 		} else if LikelyVarName(args) {
-			output += "(typeid(" + args + ") == typeid(uint8_t) || typeid(" + args + ") == typeid(char) ? +" + args + " : " + args + ")"
+			output += "if constexpr (std::is_integral<decltype(" + args + ")>::value) {" + outputStart + " static_cast<int>(" + args + "); } else {" + outputStart + " " + args + "; }\n"
+			output += outputStart
 		} else {
-			output += "std::boolalpha << " + args
+			outputStart += "std::boolalpha << "
+			output = outputStart + args
 		}
 	}
 	// Println, println, Fprintln etc should end with << std::endl
 	if strings.HasSuffix(name, "ln") {
-		output += " << std::endl"
+		output += " std::endl"
 	}
 	return output
 }
