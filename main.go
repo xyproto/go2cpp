@@ -297,6 +297,14 @@ func AddIncludes(source string) (output string) {
 		"std::unordered_map": "unordered_map",
 		"std::hash":          "functional",
 		"std::size_t":        "cstddef",
+		"std::int8_t":        "cinttypes",
+		"std::int16_t":       "cinttypes",
+		"std::int32_t":       "cinttypes",
+		"std::int64_t":       "cinttypes",
+		"std::uint8_t":       "cinttypes",
+		"std::uint16_t":      "cinttypes",
+		"std::uint32_t":      "cinttypes",
+		"std::uint64_t":      "cinttypes",
 	}
 	includeString := ""
 	for k, v := range includes {
@@ -325,6 +333,16 @@ func ElseIfSentence(source string) (output string) {
 func TypeReplace(source string) string {
 	output := source
 	output = strings.Replace(output, "string", "std::string", -1)
+	output = strings.Replace(output, "float64", "double", -1)
+	output = strings.Replace(output, "float32", "float", -1)
+	output = strings.Replace(output, "int64", "std::int64_t", -1)
+	output = strings.Replace(output, "int32", "std::int32_t", -1)
+	output = strings.Replace(output, "int16", "std::int16_t", -1)
+	output = strings.Replace(output, "int8", "std::int8_t", -1)
+	output = strings.Replace(output, "uint64", "std::uint64_t", -1)
+	output = strings.Replace(output, "uint32", "std::uint32_t", -1)
+	output = strings.Replace(output, "uint16", "std::uint16_t", -1)
+	output = strings.Replace(output, "uint8", "std::uint8_t", -1)
 	return output
 }
 
@@ -477,23 +495,6 @@ func VarDeclaration(source string) (output string) {
 
 func TypeDeclaration(source string) (output string) {
 	panic("TYPE IS NOT IMPLEMENTED YET")
-	output = source
-	if strings.HasPrefix(output, "type ") {
-		output = output[4:]
-	}
-	if strings.Contains(output, "=") {
-		parts := strings.Split(output, " ")
-		if len(parts) == 4 {
-			output = parts[0] + " " + parts[2] + " " + parts[3]
-		}
-		output = "auto " + output
-	} else {
-		parts := strings.Split(output, " ")
-		if len(parts) == 3 {
-			output = TypeReplace(parts[2]) + " " + parts[1]
-		}
-	}
-	return "TYPE HYPE " + output
 }
 
 func ConstDeclaration(source string) (output string) {
@@ -502,15 +503,17 @@ func ConstDeclaration(source string) (output string) {
 	left := strings.TrimSpace(fields[0])
 	right := strings.TrimSpace(fields[1])
 	words := strings.Split(left, " ")
-	fmt.Println("WORDS", words)
 	if len(words) == 1 {
 		// No type
 		return "const auto " + left + " = " + right
 	} else if len(words) == 2 {
-		// Has a type
-		return "const " + words[1] + " = " + right
+		if words[0] == "const" {
+			return "const auto " + " " + words[1] + " = " + right
+		} else {
+			return "const " + TypeReplace(words[1]) + " " + words[0] + " = " + right
+		}
 	}
-	// Weirdness
+	// Unrecognized
 	panic("Unrecognized const expression: " + source)
 }
 
@@ -618,7 +621,7 @@ func go2cpp(source string) string {
 			}
 		} else if strings.HasPrefix(trimmedLine, "fmt.Print") || strings.HasPrefix(trimmedLine, "print") {
 			newLine = PrintStatement(line)
-		} else if strings.Contains(trimmedLine, "=") && !strings.HasPrefix(trimmedLine, "var ") && !strings.HasPrefix(trimmedLine, "if ") {
+		} else if strings.Contains(trimmedLine, "=") && !strings.HasPrefix(trimmedLine, "var ") && !strings.HasPrefix(trimmedLine, "if ") && !strings.HasPrefix(trimmedLine, "const ") && !strings.HasPrefix(trimmedLine, "type ") {
 			elem := strings.Split(trimmedLine, "=")
 			left := strings.TrimSpace(elem[0])
 			declarationAssignment := false
