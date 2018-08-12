@@ -19,6 +19,6 @@ func main() {
 	var (
 		n u8 = 255
 	)
-	var i int = n
-	fmt.Println(i, sss)
+	var i int = int(n)
+	fmt.Println(sss, i)
 }

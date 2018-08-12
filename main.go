@@ -213,6 +213,26 @@ func splitAtAndTrim(s string, poss []int) []string {
 	return l
 }
 
+func LikelyVarName(s string) bool {
+	asdf := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"
+	digits := "0123456789"
+	onlyDigits := true
+	for _, le := range s {
+		if strings.Contains(asdf, string(le)) {
+			// contains a letter or underscore, ok
+			onlyDigits = false
+		} else if strings.Contains(digits, string(le)) {
+			// contains a digit, ok
+		} else {
+			// contains something that is not a letter, underscore or digit
+			// not likely to be a variable (but could be)
+			return false
+		}
+	}
+	// Return true if it's not only digits
+	return !onlyDigits
+}
+
 func PrintStatement(source string) (output string) {
 	if !strings.Contains(source, "(") {
 		// Invalid print line, no function call
@@ -234,25 +254,7 @@ func PrintStatement(source string) (output string) {
 		// fmt.Println() or fmt.Print()
 		return output + "std::endl"
 	}
-	// Check if all elements that are to be printed are strings
-	onlyStrings := false
-	if len(elems) > 1 {
-		allElementsStartsWithQuote := true
-		for _, elem := range elems[1:] {
-			if !strings.HasPrefix(elem, "\"") {
-				allElementsStartsWithQuote = false
-				break
-			}
-		}
-		onlyStrings = allElementsStartsWithQuote
-	}
-	// TODO: Use boolalpha only when there are booleans values, boolean variables or
-	//       boolean expressions involved. This can be hard to detect. Detect at
-	//       runtime in C++ instead?
-	if !onlyStrings {
-		// Output booleans as "true" and "false" instead of as numbers
-		output += "std::boolalpha << "
-	}
+
 	// Don't split on commas that are within paranthesis or quotes
 	withinPar := 0
 	withinQuot := false
@@ -272,12 +274,54 @@ func PrintStatement(source string) (output string) {
 	//fmt.Println(commaPos)
 	if len(commaPos) > 0 {
 		parts := splitAtAndTrim(args, commaPos)
-		//fmt.Println(parts)
-		s := strings.Join(parts, " << \" \" << ")
+		// Check if all elements that are to be printed are strings
+		onlyStrings := false
+		if len(parts) > 1 {
+			allElementsStartsWithQuote := true
+			for _, elem := range parts {
+				if !strings.HasPrefix(elem, "\"") {
+					allElementsStartsWithQuote = false
+					break
+				}
+			}
+			onlyStrings = allElementsStartsWithQuote
+		}
+		// TODO: Use boolalpha only when there are booleans values, boolean variables or
+		//       boolean expressions involved. This can be hard to detect. Detect at
+		//       runtime in C++ instead?
+		if !onlyStrings {
+			// Output booleans as "true" and "false" instead of as numbers
+			output += "std::boolalpha << "
+		}
+		s := ""
+		first := true
+		for _, part := range parts {
+			if first {
+				first = false
+			} else {
+				s += " << \" \" << "
+			}
+			if strings.HasPrefix(part, "\"") {
+				s += part
+			} else if LikelyVarName(part) {
+				s += "(typeid(" + part + ") == typeid(uint8_t) || typeid(" + part + ") == typeid(char) ? +" + part + " : " + part + ")"
+			} else {
+				s += part
+			}
+		}
+
+		//s := strings.Join(parts, " << \" \" << ")
 		//fmt.Println(s)
+
 		output += s
 	} else {
-		output += args
+		if strings.HasPrefix(args, "\"") {
+			output += args
+		} else if LikelyVarName(args) {
+			output += "(typeid(" + args + ") == typeid(uint8_t) || typeid(" + args + ") == typeid(char) ? +" + args + " : " + args + ")"
+		} else {
+			output += "std::boolalpha << " + args
+		}
 	}
 	// Println, println, Fprintln etc should end with << std::endl
 	if strings.HasSuffix(name, "ln") {
@@ -499,7 +543,7 @@ func VarDeclaration(source string) string {
 		parts := strings.SplitN(strings.TrimSpace(source), "=", 2)
 		left := parts[0]
 		right := strings.TrimSpace(parts[1])
-		fields := strings.Split(left, " ")
+		fields := strings.Split(strings.TrimSpace(left), " ")
 		if fields[0] == "var" {
 			fields = fields[1:]
 		}

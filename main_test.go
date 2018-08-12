@@ -15,11 +15,11 @@ const testcaseDirectory = "testcases/"
 var testPrograms = []string{
 	"var",
 	"output_char",
-	"printf",
-	"types",
 	"var_zero",
 	"const",
 	"continue",
+	"printf",
+	"types",
 	"if_minus_one",
 	"for_range_both",
 	"for_range_map_key_value",

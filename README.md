@@ -9,6 +9,9 @@ One of the goals is for the compiler to be able to compile itself.
 * Only works with simple code samples, for now.
 * Very few functions from the Go standard library are implemented.
 * A plan for how to do "import" is needed.
+* printing a byte is outputted as the number in Go, but as the character in C++ converted from Go:
+  `std::uint8_t b = 65; std::cout << b << std::endl;` vs `var b: byte = 64; fmt.Println(b)`
+  I found no good way to convince `std::out` to output the number of a byte instead of the character.
 
 ## Features and limitations
 
@@ -19,6 +22,7 @@ One of the goals is for the compiler to be able to compile itself.
 * Short source code.
 * `g++` is used for compiling the generated C++ code.
 * `clang-format` is used for formatting the generated C++ code.
+
 
 ## Usage
 
