@@ -10,6 +10,8 @@ import (
 )
 
 var testPrograms = []string{
+	"type",
+	"var_zero",
 	"const",
 	"continue",
 	"if_minus_one",

@@ -305,6 +305,7 @@ func AddIncludes(source string) (output string) {
 		"std::uint16_t":      "cinttypes",
 		"std::uint32_t":      "cinttypes",
 		"std::uint64_t":      "cinttypes",
+		// TODO: complex64, complex128
 	}
 	includeString := ""
 	for k, v := range includes {
@@ -343,6 +344,12 @@ func TypeReplace(source string) string {
 	output = strings.Replace(output, "uint32", "std::uint32_t", -1)
 	output = strings.Replace(output, "uint16", "std::uint16_t", -1)
 	output = strings.Replace(output, "uint8", "std::uint8_t", -1)
+	output = strings.Replace(output, "byte", "std::uint8_t", -1)
+	output = strings.Replace(output, "rune", "std::int32_t", -1)
+	output = strings.Replace(output, "uint", "unsigned int", -1)
+	// TODO: Check that uintptr works as expected
+	output = strings.Replace(output, "uintptr", "unsigned int", -1)
+	// TODO: complex64, complex128
 	return output
 }
 
@@ -494,7 +501,23 @@ func VarDeclaration(source string) (output string) {
 }
 
 func TypeDeclaration(source string) (output string) {
-	panic("TYPE IS NOT IMPLEMENTED YET")
+	output = source
+	fields := strings.SplitN(source, "=", 2)
+	left := strings.TrimSpace(fields[0])
+	right := strings.TrimSpace(fields[1])
+	words := strings.Split(left, " ")
+	if len(words) == 1 {
+		// No type
+		return "using " + left + " = " + right
+	} else if len(words) == 2 {
+		if words[0] == "type" {
+			return "using " + " " + words[1] + " = " + right
+		} else {
+			return "using " + TypeReplace(words[1]) + " " + words[0] + " = " + right
+		}
+	}
+	// Unrecognized
+	panic("Unrecognized type expression: " + source)
 }
 
 func ConstDeclaration(source string) (output string) {
@@ -556,8 +579,7 @@ func HashElements(source, keyType string, keyForBoth bool) string {
 			output += "{" + pair_elements[0] + ", " + pair_elements[1] + "}"
 		}
 	}
-	output += "}"
-	return output
+	return output + "}"
 }
 
 func go2cpp(source string) string {
