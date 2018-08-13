@@ -251,6 +251,7 @@ func PrintStatement(source string) (output string) {
 	} else {
 		outputStart = "std::cout << "
 	}
+	shortOutputStart := outputStart
 	if len(args) == 0 {
 		// fmt.Println() or fmt.Print()
 		return outputStart + "std::endl"
@@ -295,6 +296,9 @@ func PrintStatement(source string) (output string) {
 			// Output booleans as "true" and "false" instead of as numbers
 			outputStart += "std::boolalpha << "
 		}
+
+		// TODO: This code should be cleaned up:
+
 		s := ""
 		first := true
 		for _, part := range parts {
@@ -302,7 +306,7 @@ func PrintStatement(source string) (output string) {
 				first = false
 			} else {
 				if LikelyVarName(part) {
-					s += ";\n"
+					s += ";\n" + shortOutputStart + "\" \";\n"
 				} else {
 					s += " << \" \" << "
 				}
@@ -311,16 +315,17 @@ func PrintStatement(source string) (output string) {
 				s += part
 			} else if LikelyVarName(part) {
 				s += "if constexpr (std::is_integral<decltype(" + part + ")>::value) {" + outputStart + " static_cast<int>(" + part + "); } else {" + outputStart + " " + part + "; }\n"
-				s += outputStart
 			} else {
 				s += part
 			}
 		}
-
-		//s := strings.Join(parts, " << \" \" << ")
-		//fmt.Println(s)
-
+		if strings.HasSuffix(strings.TrimSpace(s), "}") {
+			s += shortOutputStart
+		}
 		output = outputStart + output + s
+		if strings.HasPrefix(output, outputStart+"if constexpr") {
+			output = output[len(outputStart):]
+		}
 	} else {
 		if strings.HasPrefix(args, "\"") {
 			output += args
