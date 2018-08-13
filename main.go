@@ -301,13 +301,17 @@ func PrintStatement(source string) (output string) {
 			if first {
 				first = false
 			} else {
-				s += " << \" \" << "
+				if LikelyVarName(part) {
+					s += ";\n"
+				} else {
+					s += " << \" \" << "
+				}
 			}
 			if strings.HasPrefix(part, "\"") {
 				s += part
 			} else if LikelyVarName(part) {
-				panic("TO IMPLEMENT, using \"if constexpr\"")
-				s += "(typeid(" + part + ") == typeid(uint8_t) || typeid(" + part + ") == typeid(char) ? +" + part + " : " + part + ")"
+				s += "if constexpr (std::is_integral<decltype(" + part + ")>::value) {" + outputStart + " static_cast<int>(" + part + "); } else {" + outputStart + " " + part + "; }\n"
+				s += outputStart
 			} else {
 				s += part
 			}
