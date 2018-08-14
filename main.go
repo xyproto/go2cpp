@@ -852,7 +852,7 @@ func main() {
 		} else if os.Args[2] == "-O" {
 			clangFormat = false
 		} else if os.Args[2] != "-o" {
-			log.Fatal("The second argument must be -o (don't prepare sources with clang-format) or -O (prepare sources with clang-format)")
+			log.Fatal("The second argument must be -o (format sources with clang-format) or -O (don't format sources with clang-format)")
 		}
 	}
 
@@ -902,7 +902,7 @@ func main() {
 	cmd2.Stderr = &errors
 	err = cmd2.Run()
 	if err != nil {
-		fmt.Println("Failed to compile this with g++:")
+		//fmt.Println("Failed to compile this with g++:")
 		fmt.Println(cppSource)
 		fmt.Println("Errors:")
 		fmt.Println(errors.String())
