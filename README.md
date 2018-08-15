@@ -125,7 +125,7 @@ auto main() -> int
 
 - [x] `fmt.Println`
 - [x] `fmt.Print`
-- [ ] `fmt.Printf`
+- [/] `fmt.Printf`
 - [ ] `fmt.Sprintf`
 - [x] `strings.Contains`
 - [x] `strings.HasPrefix`
@@ -136,5 +136,5 @@ auto main() -> int
 - [ ] `strings.Replace`
 - [ ] `strings.Split`
 - [ ] `strings.SplitN`
-- [ ] `strings.TrimSpace`
+- [x] `strings.TrimSpace`
 - [ ] All the rest

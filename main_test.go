@@ -13,7 +13,8 @@ import (
 const testcaseDirectory = "testcases/"
 
 var testPrograms = []string{
-	//"printf",
+	"trimspace",
+	"printf",
 	"multiple",
 	"prefix",
 	"contains",

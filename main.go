@@ -98,6 +98,7 @@ func AddFunctions(source string) (output string) {
 		"strings.Contains":  "inline auto stringsContains(std::string const& a, std::string const& b) -> bool { return a.find(b) != std::string::npos; }",
 		"strings.HasPrefix": "inline auto stringsHasPrefix(std::string const& givenString, std::string const& prefix) -> auto { return 0 == givenString.find(prefix); }",
 		"_format_output":    "template <typename T> void _format_output(std::ostream& out, T x) { if constexpr (std::is_same<T, bool>::value) { out << std::boolalpha << x << std::noboolalpha; } else if constexpr (std::is_integral<T>::value) { out << static_cast<int>(x); } else { out << x; } }",
+		"strings.TrimSpace": `inline std::string stringsTrimSpace(std::string const& s) { std::string news {}; for (auto l : s) { if (l != ' ' && l != '\n' && l != '\t' && l != '\v' && l != '\f' && l != '\r') { news += l; } } return news; }`,
 	}
 	for k, v := range replacements {
 		if strings.Contains(output, k) {
@@ -294,6 +295,19 @@ func PrintStatement(source string) string {
 
 	// --- enough information gathered, it's time to build the output code ---
 
+	if strings.HasSuffix(fname, "rintf") {
+		output := source
+		// TODO: Also support fmt.Fprintf, and format %v values differently.
+		//       Converting to an iostream expression is one possibility.
+		output = strings.Replace(output, "fmt.Printf", "printf", 1)
+		output = strings.Replace(output, "fmt.Fprintf", "fprintf", 1)
+		output = strings.Replace(output, "fmt.Sprintf", "sprintf", 1)
+		if strings.Contains(output, "%v") {
+			panic("support for %v is not implemented yet")
+		}
+		return output
+	}
+
 	outputName := "std::cout"
 	if lowercasePrint {
 		// print and println outputs to stderr
@@ -389,6 +403,10 @@ func AddIncludes(source string) (output string) {
 		"std::uint16_t":      "cinttypes",
 		"std::uint32_t":      "cinttypes",
 		"std::uint64_t":      "cinttypes",
+		"printf":             "cstdio",
+		"fprintf":            "cstdio",
+		"sprintf":            "cstdio",
+		"snprintf":           "cstdio",
 		// TODO: complex64, complex128
 	}
 	includeString := ""
