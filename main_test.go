@@ -17,12 +17,10 @@ var testPrograms = []string{
 	//"printf",
 	//"for_range_map_value",
 	//"for_range_map_key",
-	//"prefix",
-	//"contains",
-	//"hello",
-
+	//"multiple",
+	"prefix",
+	"contains",
 	"if",
-	"multiple",
 	"var",
 	"output_char2",
 	"var_zero",
@@ -38,6 +36,7 @@ var testPrograms = []string{
 	"for_regular",
 	"goto",
 	"switch",
+	"hello",
 }
 
 // Programs with unordered words as the output

@@ -40,7 +40,7 @@ func between(s, a, b string) string {
 	if apos == -1 {
 		return s
 	}
-	bpos := strings.Index(s, b)
+	bpos := strings.LastIndex(s, b)
 	if bpos == -1 {
 		return s
 	}
@@ -48,16 +48,17 @@ func between(s, a, b string) string {
 }
 
 // TODO: Make more robust, this easily breaks
-func LiteralStrings(source string) (output string) {
-	output = source
+func LiteralStrings(source string) string {
+	return source
+	output := source
 	replacements := map[string]string{
-		"\")":  "\"s)",
-		"\";":  "\"s;",
-		"\",":  "\"s,",
-		"\"}":  "\"s}",
-		"\" }": "\"s }",
-		"\" )": "\"s )",
-		"\":":  "\"s:",
+		"\")":   "\"s)",
+		"\";":   "\"s;",
+		"\",":   "\"s,",
+		"\"}":   "\"s}",
+		"\" }":  "\"s }",
+		"\" )":  "\"s )",
+		"\":":   "\"s:",
 	}
 	hasLiteral := false
 	for k, v := range replacements {
@@ -102,8 +103,8 @@ func AddFunctions(source string) (output string) {
 }
 
 // FunctionArguments transforms the arguments given to a function
-func FunctionArguments(source string) (output string) {
-	output = source
+func FunctionArguments(source string) string {
+	output := source
 	if strings.Contains(output, ",") {
 		currentName := ""
 		currentType := ""
@@ -214,16 +215,50 @@ func splitAtAndTrim(s string, poss []int) []string {
 	return l
 }
 
-// TODO: Rewrite the entire function
+// Split arguments. Handles quoting 1 level deep.
+func SplitArgs(s string) []string {
+	inQuote := false
+	inSingleQuote := false
+	inPar := false
+	inCurly := false
+	var args []string
+	word := ""
+	for _, letter := range s {
+		switch letter {
+		case '"':
+			inQuote = !inQuote
+		case '\'':
+			inSingleQuote = !inSingleQuote
+		}
+		if letter == '(' && !inQuote && !inSingleQuote && !inPar && !inCurly {
+			inPar = true
+		}
+		if letter == ')' && !inQuote && !inSingleQuote {
+			inPar = false
+		}
+		if letter == '{' && !inQuote && !inSingleQuote && !inPar && !inCurly {
+			inCurly = true
+		}
+		if letter == '}' && !inQuote && !inSingleQuote {
+			inCurly = false
+		}
+		if letter == ',' && !inQuote && !inSingleQuote && !inPar && !inCurly {
+			args = append(args, strings.TrimSpace(word))
+			word = ""
+		} else {
+			word += string(letter)
+		}
+	}
+	args = append(args, strings.TrimSpace(word))
+	return args
+}
+
 func PrintStatement(source string) string {
 
 	//fmt.Println("SOURCE", source)
 
 	// Pick out and trim all arguments given to the print functon
-	var args []string
-	for _, arg := range strings.Split(between(strings.TrimSpace(source), "(", ")"), ",") {
-		args = append(args, strings.TrimSpace(arg))
-	}
+	args := SplitArgs(between(strings.TrimSpace(source), "(", ")"))
 	//fmt.Println("ARGS", args)
 
 	// Identify the print function
