@@ -14,10 +14,10 @@ const testcaseDirectory = "testcases/"
 
 var testPrograms = []string{
 	//"for_range_map_key_value",
-	//"printf",
 	//"for_range_map_value",
 	//"for_range_map_key",
-	//"multiple",
+	//"printf",
+	"multiple",
 	"prefix",
 	"contains",
 	"if",
