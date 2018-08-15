@@ -265,7 +265,6 @@ func PrintStatement(source string) string {
 
 	// Pick out and trim all arguments given to the print functon
 	args := SplitArgs(between(strings.TrimSpace(source), "(", ")", false))
-	//fmt.Println("ARGS", args)
 
 	// Identify the print function
 	if !strings.Contains(source, "(") {
@@ -316,15 +315,27 @@ func PrintStatement(source string) string {
 	// No arguments given?
 	if len(args) == 0 {
 		// Just output a newline
-		return outputName + pipe + nl
+		if addNewline {
+			return outputName + pipeNewline
+		}
 	}
 
 	// Only one argument given?
 	if len(args) == 1 {
+		if strings.TrimSpace(args[0]) == "" {
+			// Just output a newline
+			if addNewline {
+				return outputName + pipeNewline
+			}
+		}
 		if allLiteralStrings {
 			return outputName + pipe + args[0] + pipeNewline
 		} else {
-			return "_format_output(" + outputName + ", " + args[0] + ");\n" + outputName + pipeNewline
+			output := "_format_output(" + outputName + ", " + args[0] + ")"
+			if addNewline {
+				output += ";\n" + outputName + pipeNewline
+			}
+			return output
 		}
 	}
 

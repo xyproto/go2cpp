@@ -13,9 +13,6 @@ import (
 const testcaseDirectory = "testcases/"
 
 var testPrograms = []string{
-	//"for_range_map_key_value",
-	//"for_range_map_value",
-	//"for_range_map_key",
 	//"printf",
 	"multiple",
 	"prefix",
@@ -37,6 +34,9 @@ var testPrograms = []string{
 	"goto",
 	"switch",
 	"hello",
+	"for_range_map_key_value",
+	"for_range_map_value",
+	"for_range_map_key",
 }
 
 // Programs with unordered words as the output
