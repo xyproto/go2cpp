@@ -90,6 +90,7 @@ func AddFunctions(source string) (output string) {
 	replacements := map[string]string{
 		"strings.Contains":  "inline auto stringsContains(std::string const& a, std::string const& b) -> bool { return a.find(b) != std::string::npos; }",
 		"strings.HasPrefix": "inline auto stringsHasPrefix(std::string const& givenString, std::string const& prefix) -> auto { return 0 == givenString.find(prefix); }",
+		"_format_output":    "template <typename T> void _format_output(std::ostream& out, T x) { if constexpr (std::is_same<T, bool>::value) { out << std::boolalpha << x << std::noboolalpha; } else if constexpr (std::is_integral<T>::value) { out << static_cast<int>(x); } else { out << x; } }",
 	}
 	for k, v := range replacements {
 		if strings.Contains(output, k) {
@@ -213,134 +214,107 @@ func splitAtAndTrim(s string, poss []int) []string {
 	return l
 }
 
-func LikelyVarName(s string) bool {
-	asdf := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"
-	digits := "0123456789"
-	onlyDigits := true
-	for _, le := range s {
-		if strings.Contains(asdf, string(le)) {
-			// contains a letter or underscore, ok
-			onlyDigits = false
-		} else if strings.Contains(digits, string(le)) {
-			// contains a digit, ok
-		} else {
-			// contains something that is not a letter, underscore or digit
-			// not likely to be a variable (but could be)
-			return false
-		}
-	}
-	// Return true if it's not only digits
-	return !onlyDigits
-}
+// TODO: Rewrite the entire function
+func PrintStatement(source string) string {
 
-func PrintStatement(source string) (output string) {
+	//fmt.Println("SOURCE", source)
+
+	// Pick out and trim all arguments given to the print functon
+	var args []string
+	for _, arg := range strings.Split(between(strings.TrimSpace(source), "(", ")"), ",") {
+		args = append(args, strings.TrimSpace(arg))
+	}
+	//fmt.Println("ARGS", args)
+
+	// Identify the print function
 	if !strings.Contains(source, "(") {
-		// Invalid print line, no function call
-		return output
+		// Not a function call
+		return source
 	}
-	elems := strings.SplitN(strings.TrimSpace(source), "(", 2)
-	name := strings.TrimSpace(elems[0])
-	args := strings.TrimSpace(elems[1])
-	if strings.HasSuffix(args, ")") {
-		args = args[:len(args)-1]
+
+	fname := strings.TrimSpace(source[:strings.Index(source, "(")])
+	//fmt.Println("FNAME", fname)
+
+	// Check if the function call ends with "ln" (println, fmt.Println)
+	addNewline := strings.HasSuffix(fname, "ln")
+	//fmt.Println("NEWLINE", addNewline)
+
+	// Check if the function call starts with "print" (as opposed to "Print")
+	lowercasePrint := strings.HasPrefix(fname, "print")
+	//fmt.Println("LOWERCASE PRINT", lowercasePrint)
+
+	// Check if all the arguments are literal strings
+	allLiteralStrings := true
+	for _, arg := range args {
+		if !strings.HasPrefix(arg, "\"") {
+			allLiteralStrings = false
+		}
 	}
-	// fmt.Println, fmt.Print
-	outputStart := ""
-	if strings.HasPrefix(name, "print") {
-		outputStart = "std::cerr << "
-	} else {
-		outputStart = "std::cout << "
+	//fmt.Println("ALL LITERAL STRINGS", allLiteralStrings)
+
+	// --- enough information gathered, it's time to build the output code ---
+
+	outputName := "std::cout"
+	if lowercasePrint {
+		// print and println outputs to stderr
+		outputName = "std::cerr"
 	}
-	shortOutputStart := outputStart
+	//fmt.Println("OUTPUT NAME", outputName)
+
+	// Useful values
+	pipe := " << "
+	blank := "\" \""
+	nl := "std::endl"
+
+	// Silence pipeNewline if the print function does not end with "ln"
+	pipeNewline := pipe + nl
+	if !addNewline {
+		pipeNewline = ""
+	}
+
+	// No arguments given?
 	if len(args) == 0 {
-		// fmt.Println() or fmt.Print()
-		return outputStart + "std::endl"
+		// Just output a newline
+		return outputName + pipe + nl
 	}
 
-	// Don't split on commas that are within paranthesis or quotes
-	withinPar := 0
-	withinQuot := false
-	commaPos := []int{}
-	for i, c := range args {
-		if c == '(' {
-			withinPar++
-		} else if c == ')' {
-			withinPar--
-		} else if c == '"' {
-			withinQuot = !withinQuot
-		} else if c == ',' && (withinPar == 0) && (!withinQuot) {
-			commaPos = append(commaPos, i)
-		}
-	}
-	//fmt.Println(args)
-	//fmt.Println(commaPos)
-
-	if len(commaPos) > 0 {
-		parts := splitAtAndTrim(args, commaPos)
-		// Check if all elements that are to be printed are strings
-		onlyStrings := false
-		if len(parts) > 1 {
-			allElementsStartsWithQuote := true
-			for _, elem := range parts {
-				if !strings.HasPrefix(elem, "\"") {
-					allElementsStartsWithQuote = false
-					break
-				}
-			}
-			onlyStrings = allElementsStartsWithQuote
-		}
-		// TODO: Use boolalpha only when there are booleans values, boolean variables or
-		//       boolean expressions involved. This can be hard to detect. Detect at
-		//       runtime in C++ instead?
-		if !onlyStrings {
-			// Output booleans as "true" and "false" instead of as numbers
-			outputStart += "std::boolalpha << "
-		}
-
-		// TODO: This code should be cleaned up:
-
-		s := ""
-		first := true
-		for _, part := range parts {
-			if first {
-				first = false
-			} else {
-				if LikelyVarName(part) {
-					s += ";\n" + shortOutputStart + "\" \";\n"
-				} else {
-					s += " << \" \" << "
-				}
-			}
-			if strings.HasPrefix(part, "\"") {
-				s += part
-			} else if LikelyVarName(part) {
-				s += "if constexpr (std::is_integral<decltype(" + part + ")>::value) {" + outputStart + " static_cast<int>(" + part + "); } else {" + outputStart + " " + part + "; }\n"
-			} else {
-				s += part
-			}
-		}
-		if strings.HasSuffix(strings.TrimSpace(s), "}") {
-			s += shortOutputStart
-		}
-		output = outputStart + output + s
-		if strings.HasPrefix(output, outputStart+"if constexpr") {
-			output = output[len(outputStart):]
-		}
-	} else {
-		if strings.HasPrefix(args, "\"") {
-			output += args
-		} else if LikelyVarName(args) {
-			output += "if constexpr (std::is_integral<decltype(" + args + ")>::value) {" + outputStart + " static_cast<int>(" + args + "); } else {" + outputStart + " " + args + "; }\n"
-			output += outputStart
+	// Only one argument given?
+	if len(args) == 1 {
+		if allLiteralStrings {
+			return outputName + pipe + args[0] + pipeNewline
 		} else {
-			outputStart += "std::boolalpha << "
-			output = outputStart + args
+			return "_format_output(" + outputName + ", " + args[0] + ");\n" + outputName + pipeNewline
 		}
 	}
-	// Println, println, Fprintln etc should end with << std::endl
-	if strings.HasSuffix(name, "ln") {
-		output += " std::endl"
+
+	// Several arguments given
+	//fmt.Println("SEVERAL ARGUMENTS", args)
+
+	// HINT: Almost everything should start with "pipe" and almost nothing should end with "pipe"
+	output := outputName
+	lastIndex := len(args) - 1
+	for i, arg := range args {
+		//fmt.Println("ARGUMENT", i, arg)
+		// Is it a literal string?
+		if strings.HasPrefix(arg, "\"") {
+			output += pipe + arg
+		} else {
+			if i == 0 {
+				output = ""
+			} else {
+				output += ";\n"
+			}
+			output += "_format_output(" + outputName + ", " + arg + ");\n" + outputName
+		}
+		if i < lastIndex {
+			output += pipe + blank
+		} else {
+			output += pipeNewline
+		}
 	}
+
+	//fmt.Println("GENERATED OUTPUT", output)
+
 	return output
 }
 

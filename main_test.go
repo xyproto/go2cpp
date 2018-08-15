@@ -13,30 +13,31 @@ import (
 const testcaseDirectory = "testcases/"
 
 var testPrograms = []string{
-	"output_char2",
+	//"for_range_map_key_value",
+	//"printf",
+	//"for_range_map_value",
+	//"for_range_map_key",
+	//"prefix",
+	//"contains",
+	//"hello",
+
+	"if",
+	"multiple",
 	"var",
+	"output_char2",
 	"var_zero",
 	"output_char",
 	"const",
 	"continue",
-	"printf",
 	"types",
 	"if_minus_one",
 	"for_range_both",
-	"for_range_map_key_value",
 	"for_endless",
-	"for_range_map_value",
-	"for_range_map_key",
 	"for_range_single",
 	"for_range_list",
 	"for_regular",
 	"goto",
 	"switch",
-	"prefix",
-	"contains",
-	"if",
-	"multiple",
-	"hello",
 }
 
 // Programs with unordered words as the output
