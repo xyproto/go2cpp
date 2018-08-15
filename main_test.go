@@ -13,6 +13,7 @@ import (
 const testcaseDirectory = "testcases/"
 
 var testPrograms = []string{
+	//"var2",
 	"trimspace",
 	"printf",
 	"multiple",
