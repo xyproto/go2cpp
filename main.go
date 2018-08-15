@@ -95,10 +95,10 @@ func WholeProgramReplace(source string) (output string) {
 func AddFunctions(source string) (output string) {
 	output = source
 	replacements := map[string]string{
-		"strings.Contains":  "inline auto stringsContains(std::string const& a, std::string const& b) -> bool { return a.find(b) != std::string::npos; }",
-		"strings.HasPrefix": "inline auto stringsHasPrefix(std::string const& givenString, std::string const& prefix) -> auto { return 0 == givenString.find(prefix); }",
-		"_format_output":    "template <typename T> void _format_output(std::ostream& out, T x) { if constexpr (std::is_same<T, bool>::value) { out << std::boolalpha << x << std::noboolalpha; } else if constexpr (std::is_integral<T>::value) { out << static_cast<int>(x); } else { out << x; } }",
-		"strings.TrimSpace": `inline std::string stringsTrimSpace(std::string const& s) { std::string news {}; for (auto l : s) { if (l != ' ' && l != '\n' && l != '\t' && l != '\v' && l != '\f' && l != '\r') { news += l; } } return news; }`,
+		"strings.Contains":  `inline auto stringsContains(std::string const& a, std::string const& b) -> bool { return a.find(b) != std::string::npos; }`,
+		"strings.HasPrefix": `inline auto stringsHasPrefix(std::string const& givenString, std::string const& prefix) -> auto { return 0 == givenString.find(prefix); }`,
+		"_format_output":    `template <typename T> void _format_output(std::ostream& out, T x) { if constexpr (std::is_same<T, bool>::value) { out << std::boolalpha << x << std::noboolalpha; } else if constexpr (std::is_integral<T>::value) { out << static_cast<int>(x); } else { out << x; } }`,
+		"strings.TrimSpace": `inline auto stringsTrimSpace(std::string const& s) -> std::string { std::string news {}; for (auto l : s) { if (l != ' ' && l != '\n' && l != '\t' && l != '\v' && l != '\f' && l != '\r') { news += l; } } return news; }`,
 	}
 	for k, v := range replacements {
 		if strings.Contains(output, k) {
