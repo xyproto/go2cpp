@@ -125,7 +125,7 @@ auto main() -> int
 
 - [x] `fmt.Println`
 - [x] `fmt.Print`
-- [/] `fmt.Printf`
+- [ ] `fmt.Printf` (partially)
 - [ ] `fmt.Sprintf`
 - [x] `strings.Contains`
 - [x] `strings.HasPrefix`
@@ -138,3 +138,5 @@ auto main() -> int
 - [ ] `strings.SplitN`
 - [x] `strings.TrimSpace`
 - [ ] All the rest
+
+Ideally, all code in the standard library should transpile correctly to C++17.
