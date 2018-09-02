@@ -13,7 +13,15 @@ import (
 const testcaseDirectory = "testcases/"
 
 var testPrograms = []string{
-	//"var2",
+	"var2",
+	"for_range_map_key_value",
+	"for_range_map_value",
+	"for_range_map_key",
+	"for_range_both",
+	"for_endless",
+	"for_range_single",
+	"for_range_list",
+	"for_regular",
 	"trimspace",
 	"printf",
 	"multiple",
@@ -28,17 +36,9 @@ var testPrograms = []string{
 	"continue",
 	"types",
 	"if_minus_one",
-	"for_range_both",
-	"for_endless",
-	"for_range_single",
-	"for_range_list",
-	"for_regular",
 	"goto",
 	"switch",
 	"hello",
-	"for_range_map_key_value",
-	"for_range_map_value",
-	"for_range_map_key",
 }
 
 // Programs with unordered words as the output
@@ -102,7 +102,7 @@ func TestPrograms(t *testing.T) {
 		if err != nil {
 			cmd := "./go2cpp " + gofile + " -O"
 			if stdoutT, stderrT, err := Run(cmd); err != nil {
-				fmt.Println("TRANSPIPLATION FAILED:", cmd)
+				fmt.Println("TRANSPILATION FAILED:", cmd)
 				fmt.Println(stdoutT, stderrT)
 			} else {
 				t.Fatal("go2cpp should not first fail and then succeed! Something is wrong.")

@@ -28,7 +28,7 @@ const (
 var endings = []string{"{", ",", "}", ":"}
 
 var (
-	switchExpressionCounter int = -1
+	switchExpressionCounter = -1
 	firstCase               bool
 	switchLabel             string
 	labelCounter            int
@@ -55,7 +55,10 @@ func between(s, a, b string, front bool) string {
 
 // TODO: Make more robust, this easily breaks
 func LiteralStrings(source string) string {
+
+	// Temporary
 	return source
+
 	output := source
 	replacements := map[string]string{
 		"\")":  "\"s)",
@@ -344,13 +347,12 @@ func PrintStatement(source string) string {
 		}
 		if allLiteralStrings {
 			return outputName + pipe + args[0] + pipeNewline
-		} else {
-			output := "_format_output(" + outputName + ", " + args[0] + ")"
-			if addNewline {
-				output += ";\n" + outputName + pipeNewline
-			}
-			return output
 		}
+		output := "_format_output(" + outputName + ", " + args[0] + ")"
+		if addNewline {
+			output += ";\n" + outputName + pipeNewline
+		}
+		return output
 	}
 
 	// Several arguments given
@@ -505,11 +507,9 @@ func ForLoop(source string, encounteredHashMaps []string) string {
 		hashMapName := listName
 		if has(encounteredHashMaps, hashMapName) {
 			// looping over the key of a hash map, not over the index of a list
-			hashMapHashKey := varName + hashMapSuffix + keysSuffix
-			return "for (auto " + hashMapHashKey + " : " + hashMapName + keysSuffix + ") {" + "\n" + "auto " + varName + " = " + hashMapHashKey + ".second"
+			return "for (const auto & [" + varName + ", " + varName + "__" + "] : " + hashMapName + ") {"
 		} else if varName == "_" {
-			// TODO: Loop over values in list
-			panic("TO IMPLEMENT: for _, v := range list")
+			return "for (const auto & [" + varName + "__" + ", " + varName + "___" + "] : " + hashMapName + ") {"
 		} else {
 			// looping over the index of a list
 			return "for (std::size_t " + varName + " = 0; " + varName + " < std::size(" + listName + "); " + varName + "++) {"
@@ -531,19 +531,19 @@ func ForLoop(source string, encounteredHashMaps []string) string {
 			if indexvar == "_" {
 				// looping over the values of a hash map
 				hashMapHashKey := hashMapName + hashMapSuffix
-				return "for (auto " + hashMapHashKey + " : " + hashMapName + ") {" + "\n" + "auto " + elemvar + " = " + hashMapHashKey + ".second"
+				return "for (const auto & " + hashMapHashKey + " : " + hashMapName + ") {" + "\n" + "auto " + elemvar + " = " + hashMapHashKey + ".second"
 			}
 			// for k, v := range m
 			keyvar := indexvar
-			hashMapHashKey := keyvar + hashMapSuffix + keysSuffix
-			return "for (auto " + hashMapHashKey + " : " + hashMapName + keysSuffix + ") {" + "\n" + "auto " + keyvar + " = " + hashMapHashKey + ".second;\nauto " + elemvar + " = " + hashMapName + ".at(" + hashMapHashKey + ".first)"
+			//hashMapHashKey := keyvar + hashMapSuffix + keysSuffix
+			return "for (const auto & [" + keyvar + ", " + elemvar + "] : " + hashMapName + ") {"
+			//return "for (auto " + hashMapHashKey + " : " + hashMapName + keysSuffix + ") {" + "\n" + "auto " + keyvar + " = " + hashMapHashKey + ".second;\nauto " + elemvar + " = " + hashMapName + ".at(" + hashMapHashKey + ".first)"
 		}
 
 		if indexvar == "_" {
 			return "for (auto " + elemvar + " : " + listName + ") {"
-		} else {
-			return "for (std::size_t " + indexvar + " = 0; " + indexvar + " < std::size(" + listName + "); " + indexvar + "++) {" + "\n" + "auto " + elemvar + " = " + listName + "[" + indexvar + "]"
 		}
+		return "for (std::size_t " + indexvar + " = 0; " + indexvar + " < std::size(" + listName + "); " + indexvar + "++) {" + "\n" + "auto " + elemvar + " = " + listName + "[" + indexvar + "]"
 	}
 	// not "for" + "range"
 	if strings.Contains(expression, ":=") {
@@ -612,15 +612,22 @@ func VarDeclaration(source string) string {
 		} else {
 			return "auto" + " " + fields[0] + " = " + right
 		}
-	} else {
-		fields := strings.Split(strings.TrimSpace(source), " ")
-		if fields[0] == "var" {
-			fields = fields[1:]
-		}
-		if len(fields) == 2 {
-			return TypeReplace(fields[1]) + " " + fields[0]
+	}
+	var trimmedFields []string
+	for _, field := range strings.Split(source, " ") {
+		trimmedField := strings.TrimSpace(field)
+		if trimmedField != "" {
+			trimmedFields = append(trimmedFields, trimmedField)
 		}
 	}
+	fields := trimmedFields
+	if fields[0] == "var" {
+		fields = fields[1:]
+	}
+	if len(fields) == 2 {
+		return TypeReplace(fields[1]) + " " + fields[0]
+	}
+	fmt.Println("FIELDS", fields)
 	// Unrecognized
 	panic("Unrecognized var declaration: " + source)
 }
@@ -655,18 +662,11 @@ func ConstDeclaration(source string) (output string) {
 	} else if len(words) == 2 {
 		if words[0] == "const" {
 			return "const auto " + " " + words[1] + " = " + right
-		} else {
-			return "const " + TypeReplace(words[1]) + " " + words[0] + " = " + right
 		}
+		return "const " + TypeReplace(words[1]) + " " + words[0] + " = " + right
 	}
 	// Unrecognized
 	panic("Unrecognized const expression: " + source)
-}
-
-// shouldHash decides if the given type, as a key in an unordered_map, should be hashed
-func shouldHash(keyType string) bool {
-	// TODO: Check if always using std::hash makes sense, or only for some types (then which ones?)
-	return strings.Contains(keyType, "std::")
 }
 
 // HashElements transforms the contents of a map in Go to the contents of an unordered_map in C++
@@ -686,21 +686,11 @@ func HashElements(source, keyType string, keyForBoth bool) string {
 		} else {
 			first = false
 		}
-		pair_elements := strings.SplitN(pair, ":", 2)
-		if len(pair_elements) != 2 {
+		pairElements := strings.SplitN(pair, ":", 2)
+		if len(pairElements) != 2 {
 			panic("This should be two elements, separated by a colon: " + pair)
 		}
-		if shouldHash(keyType) {
-			if keyForBoth {
-				// Create the lements for a hash map from hash(key) -> key
-				output += "{std::hash<" + keyType + ">{}(" + pair_elements[0] + "), " + pair_elements[0] + "}"
-			} else {
-				// Create the elements for a hash map from hash(key) -> value
-				output += "{std::hash<" + keyType + ">{}(" + pair_elements[0] + "), " + pair_elements[1] + "}"
-			}
-		} else {
-			output += "{" + pair_elements[0] + ", " + pair_elements[1] + "}"
-		}
+		output += "{ " + pairElements[0] + ", " + pairElements[1] + " }"
 	}
 	return output + "}"
 }
@@ -792,16 +782,8 @@ func go2cpp(source string) string {
 					valueType := TypeReplace(between(right, "]", "{", true))
 					elements := between(right, "{", "}", true)
 					hashName := strings.TrimSpace(left)
-					if shouldHash(keyType) {
-						// For this case, the key can not be used as the hash map key for std::unordered_map.
-						// Create two hash maps, one for hash(key)->value and one for hash(key)->key.
-						newLine = "std::unordered_map<std::size_t, " + valueType + "> " + hashName + HashElements(elements, keyType, false) + ";\n"
-						newLine += "std::unordered_map<std::size_t, " + keyType + "> " + hashName + keysSuffix + HashElements(elements, keyType, true)
-						encounteredHashMaps = append(encounteredHashMaps, hashName)
-					} else {
-						newLine = "std::unordered_map<" + keyType + ", " + valueType + "> " + hashName + HashElements(elements, keyType, false)
-						encounteredHashMaps = append(encounteredHashMaps, hashName)
-					}
+					newLine = "std::unordered_map<" + keyType + ", " + valueType + "> " + hashName + " " + HashElements(elements, keyType, false)
+					encounteredHashMaps = append(encounteredHashMaps, hashName)
 				} else {
 					newLine = "auto " + strings.TrimSpace(left) + " = " + strings.TrimSpace(right)
 				}
