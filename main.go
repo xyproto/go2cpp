@@ -710,6 +710,10 @@ func go2cpp(source string) string {
 	for _, line := range strings.Split(source, "\n") {
 		newLine := line
 		trimmedLine := strings.TrimSpace(line)
+		// TODO: A multiline string could have lines starting with //, make sure to support this
+		if strings.HasPrefix(trimmedLine, "//") {
+			continue
+		}
 		if strings.HasSuffix(trimmedLine, ";") {
 			trimmedLine = trimmedLine[:len(trimmedLine)-1]
 		}

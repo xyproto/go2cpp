@@ -7,11 +7,8 @@ One of the goals is for the compiler to be able to compile itself.
 ## Known issues
 
 * Only works with simple code samples, for now.
-* Very few functions from the Go standard library are implemented.
-* A plan for how to do "import" is needed.
-* printing a byte is outputted as the number in Go, but as the character in C++ converted from Go:
-  `std::uint8_t b = 65; std::cout << b << std::endl;` vs `var b: byte = 64; fmt.Println(b)`
-  I found no good way to convince `std::out` to output the number of a byte instead of the character.
+* Very few functions from the Go standard library are implemented. The ideal would be to be able to compile the official Go standard library.
+* A good plan for how to implement `import` is needed.
 
 ## Features and limitations
 
