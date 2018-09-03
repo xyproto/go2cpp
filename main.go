@@ -712,6 +712,7 @@ func go2cpp(source string) string {
 		trimmedLine := strings.TrimSpace(line)
 		// TODO: A multiline string could have lines starting with //, make sure to support this
 		if strings.HasPrefix(trimmedLine, "//") {
+			lines = append(lines, trimmedLine)
 			continue
 		}
 		if strings.HasSuffix(trimmedLine, ";") {
