@@ -36,7 +36,7 @@ Output what the intermediate C++17 code looks like:
 * `g++` with support for C++17
 * `clang-format`
 
-## Example transformation
+## Example transformations
 
 **Go input:**
 
@@ -79,6 +79,68 @@ auto main() -> int
               << " " << y << std::endl;
     std::cout << "z ="
               << " " << z << std::endl;
+    return 0;
+}
+```
+
+**Go input:**
+
+```go
+package main
+
+import (
+	"fmt"
+)
+
+func main() {
+	m := map[string]string{"first": "hi", "second": "you", "third": "there"}
+	first := true
+	for k, v := range m {
+		if first {
+			first = false
+		} else {
+			fmt.Print(" ")
+		}
+		fmt.Print(k + v)
+	}
+	fmt.Println()
+}
+```
+
+**C++ output:**
+
+```c++
+#include <iostream>
+#include <string>
+#include <unordered_map>
+
+template <typename T> void _format_output(std::ostream& out, T x)
+{
+    if constexpr (std::is_same<T, bool>::value) {
+        out << std::boolalpha << x << std::noboolalpha;
+    } else if constexpr (std::is_integral<T>::value) {
+        out << static_cast<int>(x);
+    } else {
+        out << x;
+    }
+}
+
+auto main() -> int
+{
+    std::unordered_map<std::string, std::string> m{ { "first", "hi" }, { "second", "you" },
+        { "third", "there" } };
+    auto first = true;
+    for (const auto& [k, k__] : m) {
+        if (first) {
+            first = false;
+        } else {
+            std::cout << " ";
+        }
+
+        _format_output(std::cout, k);
+    }
+
+    std::cout << std::endl;
     return 0;
 }
 ```
