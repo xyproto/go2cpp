@@ -130,14 +130,14 @@ auto main() -> int
     std::unordered_map<std::string, std::string> m{ { "first", "hi" }, { "second", "you" },
         { "third", "there" } };
     auto first = true;
-    for (const auto& [k, k__] : m) {
+    for (const auto& [k, v] : m) {
         if (first) {
             first = false;
         } else {
             std::cout << " ";
         }
 
-        _format_output(std::cout, k);
+        _format_output(std::cout, k + v);
     }
 
     std::cout << std::endl;
@@ -147,7 +147,7 @@ auto main() -> int
 
 # General info
 
-* Version: 0.0.0
+* Version: 0.1
 * License: MIT
 
 # TODO
