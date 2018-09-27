@@ -613,14 +613,7 @@ func VarDeclaration(source string) string {
 			return "auto" + " " + fields[0] + " = " + right
 		}
 	}
-	var trimmedFields []string
-	for _, field := range strings.Split(source, " ") {
-		trimmedField := strings.TrimSpace(field)
-		if trimmedField != "" {
-			trimmedFields = append(trimmedFields, trimmedField)
-		}
-	}
-	fields := trimmedFields
+	fields := strings.Fields(source)
 	if fields[0] == "var" {
 		fields = fields[1:]
 	}
