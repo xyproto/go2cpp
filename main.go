@@ -100,7 +100,7 @@ func AddFunctions(source string) (output string) {
 	replacements := map[string]string{
 		"strings.Contains":  `inline auto stringsContains(std::string const& a, std::string const& b) -> bool { return a.find(b) != std::string::npos; }`,
 		"strings.HasPrefix": `inline auto stringsHasPrefix(std::string const& givenString, std::string const& prefix) -> auto { return 0 == givenString.find(prefix); }`,
-		"_format_output":    `template <typename T> void _format_output(std::ostream& out, T x) { if constexpr (std::is_same<T, bool>::value) { out << std::boolalpha << x << std::noboolalpha; } else if constexpr (std::is_integral<T>::value) { out << static_cast<int>(x); } else { out << x; } }`,
+		"_format_output":    `template <typename T> void _format_output(std::ostream& out, T x) { if constexpr (std::is_same<T, bool>::value) { out << std::boolalpha << x << std::noboolalpha; } else if constexpr (std::is_integral<T>::value) { out << static_cast<int>(x); } else if constexpr (std::is_object<T>::value && std::is_pointer<T>::value) { out << "&" << x->_str(); } else if constexpr (std::is_object<T>::value && !std::is_pointer<T>::value) { out << x._str(); } else { out << x; } }`,
 		"strings.TrimSpace": `inline auto stringsTrimSpace(std::string const& s) -> std::string { std::string news {}; for (auto l : s) { if (l != ' ' && l != '\n' && l != '\t' && l != '\v' && l != '\f' && l != '\r') { news += l; } } return news; }`,
 	}
 	for k, v := range replacements {
@@ -263,9 +263,7 @@ func SplitArgs(s string) []string {
 	return args
 }
 
-func PrintStatement(source string) string {
-
-	//fmt.Println("SOURCE", source)
+func PrintStatement(source string) (string, bool) {
 
 	// Pick out and trim all arguments given to the print functon
 	args := SplitArgs(between(strings.TrimSpace(source), "(", ")", false))
@@ -273,7 +271,7 @@ func PrintStatement(source string) string {
 	// Identify the print function
 	if !strings.Contains(source, "(") {
 		// Not a function call
-		return source
+		return source, false
 	}
 
 	fname := strings.TrimSpace(source[:strings.Index(source, "(")])
@@ -294,6 +292,8 @@ func PrintStatement(source string) string {
 			allLiteralStrings = false
 		}
 	}
+	mayNeedPrettyPrint := !allLiteralStrings
+
 	//fmt.Println("ALL LITERAL STRINGS", allLiteralStrings)
 
 	// --- enough information gathered, it's time to build the output code ---
@@ -308,7 +308,7 @@ func PrintStatement(source string) string {
 		if strings.Contains(output, "%v") {
 			panic("support for %v is not implemented yet")
 		}
-		return output
+		return output, mayNeedPrettyPrint
 	}
 
 	outputName := "std::cout"
@@ -333,7 +333,7 @@ func PrintStatement(source string) string {
 	if len(args) == 0 {
 		// Just output a newline
 		if addNewline {
-			return outputName + pipeNewline
+			return outputName + pipeNewline, false
 		}
 	}
 
@@ -342,17 +342,17 @@ func PrintStatement(source string) string {
 		if strings.TrimSpace(args[0]) == "" {
 			// Just output a newline
 			if addNewline {
-				return outputName + pipeNewline
+				return outputName + pipeNewline, false
 			}
 		}
 		if allLiteralStrings {
-			return outputName + pipe + args[0] + pipeNewline
+			return outputName + pipe + args[0] + pipeNewline, false
 		}
 		output := "_format_output(" + outputName + ", " + args[0] + ")"
 		if addNewline {
 			output += ";\n" + outputName + pipeNewline
 		}
-		return output
+		return output, mayNeedPrettyPrint
 	}
 
 	// Several arguments given
@@ -383,7 +383,7 @@ func PrintStatement(source string) string {
 
 	//fmt.Println("GENERATED OUTPUT", output)
 
-	return output
+	return output, mayNeedPrettyPrint
 }
 
 func AddIncludes(source string) (output string) {
@@ -409,6 +409,7 @@ func AddIncludes(source string) (output string) {
 		"fprintf":            "cstdio",
 		"sprintf":            "cstdio",
 		"snprintf":           "cstdio",
+		"std::stringstream":  "sstream",
 		// TODO: complex64, complex128
 	}
 	includeString := ""
@@ -596,7 +597,8 @@ func Case(source string) (output string) {
 	return output
 }
 
-func VarDeclaration(source string) string {
+// Return transformed line and the variable name
+func VarDeclaration(source string) (string, string) {
 	if strings.Contains(source, "=") {
 		parts := strings.SplitN(strings.TrimSpace(source), "=", 2)
 		left := parts[0]
@@ -606,11 +608,11 @@ func VarDeclaration(source string) string {
 			fields = fields[1:]
 		}
 		if len(fields) > 2 {
-			return TypeReplace(fields[1]) + " " + fields[0] + " " + strings.Join(fields[2:], " ") + " = " + right
+			return TypeReplace(fields[1]) + " " + fields[0] + " " + strings.Join(fields[2:], " ") + " = " + right, fields[0]
 		} else if len(fields) == 2 {
-			return TypeReplace(fields[1]) + " " + fields[0] + " = " + right
+			return TypeReplace(fields[1]) + " " + fields[0] + " = " + right, fields[0]
 		} else {
-			return "auto" + " " + fields[0] + " = " + right
+			return "auto" + " " + fields[0] + " = " + right, fields[0]
 		}
 	}
 	fields := strings.Fields(source)
@@ -618,14 +620,15 @@ func VarDeclaration(source string) string {
 		fields = fields[1:]
 	}
 	if len(fields) == 2 {
-		return TypeReplace(fields[1]) + " " + fields[0]
+		return TypeReplace(fields[1]) + " " + fields[0], fields[0]
 	}
-	fmt.Println("FIELDS", fields)
 	// Unrecognized
 	panic("Unrecognized var declaration: " + source)
 }
 
-func TypeDeclaration(source string) string {
+// TypeDeclaration returns a transformed string (from Go to C++),
+// and a bool if a struct is opened (with {).
+func TypeDeclaration(source string) (string, bool) {
 	fields := strings.Split(strings.TrimSpace(source), " ")
 	if fields[0] == "type" {
 		fields = fields[1:]
@@ -633,11 +636,21 @@ func TypeDeclaration(source string) string {
 	left := strings.TrimSpace(fields[0])
 	right := strings.TrimSpace(fields[1])
 	words := strings.Split(left, " ")
-	if len(words) == 1 {
-		// No type
-		return "using " + left + " = " + TypeReplace(right)
+	if len(fields) == 2 {
+		// Type alias
+		return "using " + left + " = " + TypeReplace(right), false
 	} else if len(words) == 2 {
-		return "using " + words[1] + " " + words[0] + " = " + TypeReplace(right)
+		// Type alias
+		return "using " + words[1] + " " + words[0] + " = " + TypeReplace(right), false
+	} else if strings.Contains(right, "struct") {
+		// type Vec3 struct {
+		// to
+		// class Vec3 { public:
+		// also the closing bracket must end with a semicolon
+		return "class " + left + " { public:", true
+	} else if len(words) == 1 {
+		// Type alias
+		return "using " + left + " = " + TypeReplace(right), false
 	}
 	// Unrecognized
 	panic("Unrecognized type declaration: " + source)
@@ -688,10 +701,25 @@ func HashElements(source, keyType string, keyForBoth bool) string {
 	return output + "}"
 }
 
+func CreateStrMethod(varNames []string) string {
+	s := "std::string _str() {\n"
+	s += `  std::stringstream ss; ss << "{" `;
+	for i, varName := range varNames {
+		if i > 0 {
+			s += ` << " " `
+		}
+		s += " << " + varName
+	}
+	s += ` << "}";`
+	s += "\n  return ss.str(); }"
+	return s
+}
+
 func go2cpp(source string) string {
 	lines := []string{}
 	currentReturnType := ""
 	currentFunctionName := ""
+	structVarNames := []string{}
 	inImport := false
 	inVar := false
 	inType := false
@@ -700,6 +728,7 @@ func go2cpp(source string) string {
 	// Keep track of encountered hash maps
 	// TODO: Use reflection instead to loop either one way or the other. The hash map may be defined in another package.
 	encounteredHashMaps := []string{}
+	inStruct := false
 	for _, line := range strings.Split(source, "\n") {
 		newLine := line
 		trimmedLine := strings.TrimSpace(line)
@@ -731,10 +760,20 @@ func go2cpp(source string) string {
 		} else if inConst && strings.Contains(trimmedLine, ")") {
 			inConst = false
 			continue
-		} else if inVar {
-			newLine = VarDeclaration(line)
+		} else if inVar || (inStruct && trimmedLine != "}"){
+			name := ""
+			newLine, name = VarDeclaration(line)
+			if inStruct {
+				// Gathering variable names from this struct
+				structVarNames = append(structVarNames, name)
+			}
 		} else if inType {
-			newLine = TypeDeclaration(line)
+			prevInStruct := inStruct
+			newLine, inStruct = TypeDeclaration(line)
+			if !prevInStruct && inStruct {
+				// Entering struct, reset the slice that is used to gather variable names
+				structVarNames = []string{}
+			}
 		} else if inConst {
 			newLine = ConstDeclaration(line)
 		} else if strings.HasPrefix(trimmedLine, "func") {
@@ -753,7 +792,8 @@ func go2cpp(source string) string {
 				// Just use the standard tuple
 			}
 		} else if strings.HasPrefix(trimmedLine, "fmt.Print") || strings.HasPrefix(trimmedLine, "print") {
-			newLine = PrintStatement(line)
+			// The ignored return value is if "pretty print" functionality may be needed, for structs and classes
+			newLine, _ = PrintStatement(line)
 		} else if strings.Contains(trimmedLine, "=") && !strings.HasPrefix(trimmedLine, "var ") && !strings.HasPrefix(trimmedLine, "if ") && !strings.HasPrefix(trimmedLine, "const ") && !strings.HasPrefix(trimmedLine, "type ") {
 			elem := strings.Split(trimmedLine, "=")
 			left := strings.TrimSpace(elem[0])
@@ -763,6 +803,9 @@ func go2cpp(source string) string {
 				left = left[:len(left)-1]
 			}
 			right := strings.TrimSpace(elem[1])
+			if strings.HasPrefix(right, "&") && strings.Contains(right, "{") && strings.Contains(right, "}") {
+				right = "new " + right[1:]
+			}
 			if strings.Contains(left, ",") {
 				newLine = "auto [" + left + "] = " + right
 			} else if declarationAssignment {
@@ -812,9 +855,10 @@ func go2cpp(source string) string {
 			inConst = true
 			continue
 		} else if strings.HasPrefix(trimmedLine, "var ") {
-			newLine = VarDeclaration(line)
+			// Ignore variable name since it's not in a struct
+			newLine, _ = VarDeclaration(line)
 		} else if strings.HasPrefix(trimmedLine, "type ") {
-			newLine = TypeDeclaration(line)
+			newLine, inStruct = TypeDeclaration(line)
 		} else if strings.HasPrefix(trimmedLine, "const ") {
 			newLine = ConstDeclaration(line)
 		} else if trimmedLine == "fallthrough" {
@@ -832,6 +876,13 @@ func go2cpp(source string) string {
 			newLine = strings.Replace(line, "}", "return 0;\n}", 1)
 		}
 		if strings.HasSuffix(trimmedLine, "}") {
+			// If the struct is being closed, add a semicolon
+			if inStruct {
+				// Create a _str() method for this struct
+				newLine = CreateStrMethod(structVarNames) + newLine + ";"
+
+				inStruct = false;
+			}
 			newLine += "\n"
 		}
 		if (!strings.HasSuffix(newLine, ";") && !has(endings, lastchar(trimmedLine)) || strings.Contains(trimmedLine, "=")) && !strings.HasPrefix(trimmedLine, "//") && (!has(endings, lastchar(newLine)) && !strings.Contains(newLine, "//")) {
