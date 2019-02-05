@@ -177,7 +177,7 @@ auto main() -> int
 - [ ] `select`
 - [x] `struct` (needs more testing)
 - [x] `switch`
-- [ ] `type`
+- [x] `type` (needs more testing)
 - [x] `var`
 
 ## Standard library
