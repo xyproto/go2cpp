@@ -147,7 +147,7 @@ auto main() -> int
 
 # General info
 
-* Version: 0.1
+* Version: 0.2.0
 * License: MIT
 
 # TODO
@@ -175,7 +175,7 @@ auto main() -> int
 - [x] `range`
 - [x] `return`
 - [ ] `select`
-- [ ] `struct`
+- [x] `struct` (needs more testing)
 - [x] `switch`
 - [ ] `type`
 - [x] `var`
