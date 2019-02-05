@@ -100,7 +100,28 @@ func AddFunctions(source string) (output string) {
 	replacements := map[string]string{
 		"strings.Contains":  `inline auto stringsContains(std::string const& a, std::string const& b) -> bool { return a.find(b) != std::string::npos; }`,
 		"strings.HasPrefix": `inline auto stringsHasPrefix(std::string const& givenString, std::string const& prefix) -> auto { return 0 == givenString.find(prefix); }`,
-		"_format_output":    `template <typename T> void _format_output(std::ostream& out, T x) { if constexpr (std::is_same<T, bool>::value) { out << std::boolalpha << x << std::noboolalpha; } else if constexpr (std::is_integral<T>::value) { out << static_cast<int>(x); } else if constexpr (std::is_object<T>::value && std::is_pointer<T>::value) { out << "&" << x->_str(); } else if constexpr (std::is_object<T>::value && !std::is_pointer<T>::value) { out << x._str(); } else { out << x; } }`,
+
+		"_format_output": `template<typename T>
+using _str_t = decltype( std::declval<T&>()._str() );
+
+template<typename T>
+using _p_str_t = decltype( std::declval<T&>()->_str() );
+
+template <typename T> std::ostream* _format_output(std::ostream& out, T x)
+{
+    if constexpr (std::is_same<T, bool>::value) {
+        out << std::boolalpha << x << std::noboolalpha;
+    } else if constexpr (std::is_integral<T>::value) {
+        out << static_cast<int>(x);
+    } else if constexpr (std::is_object<T>::value && !std::is_pointer<T>::value && std::experimental::is_detected_v<_str_t, T>) {
+        out << x._str();
+    } else if constexpr (std::is_object<T>::value && std::is_pointer<T>::value && std::experimental::is_detected_v<_p_str_t, T>) {
+        out << "&" << x->_str();
+    } else {
+        out << x;
+    }
+    return &out;
+}`,
 		"strings.TrimSpace": `inline auto stringsTrimSpace(std::string const& s) -> std::string { std::string news {}; for (auto l : s) { if (l != ' ' && l != '\n' && l != '\t' && l != '\v' && l != '\f' && l != '\r') { news += l; } } return news; }`,
 	}
 	for k, v := range replacements {
@@ -389,27 +410,29 @@ func PrintStatement(source string) (string, bool) {
 func AddIncludes(source string) (output string) {
 	output = source
 	includes := map[string]string{
-		"std::tuple":         "tuple",
-		"std::endl":          "iostream",
-		"std::cout":          "iostream",
-		"std::string":        "string",
-		"std::size":          "iterator",
-		"std::unordered_map": "unordered_map",
-		"std::hash":          "functional",
-		"std::size_t":        "cstddef",
-		"std::int8_t":        "cinttypes",
-		"std::int16_t":       "cinttypes",
-		"std::int32_t":       "cinttypes",
-		"std::int64_t":       "cinttypes",
-		"std::uint8_t":       "cinttypes",
-		"std::uint16_t":      "cinttypes",
-		"std::uint32_t":      "cinttypes",
-		"std::uint64_t":      "cinttypes",
-		"printf":             "cstdio",
-		"fprintf":            "cstdio",
-		"sprintf":            "cstdio",
-		"snprintf":           "cstdio",
-		"std::stringstream":  "sstream",
+		"std::tuple":                       "tuple",
+		"std::endl":                        "iostream",
+		"std::cout":                        "iostream",
+		"std::string":                      "string",
+		"std::size":                        "iterator",
+		"std::unordered_map":               "unordered_map",
+		"std::hash":                        "functional",
+		"std::size_t":                      "cstddef",
+		"std::int8_t":                      "cinttypes",
+		"std::int16_t":                     "cinttypes",
+		"std::int32_t":                     "cinttypes",
+		"std::int64_t":                     "cinttypes",
+		"std::uint8_t":                     "cinttypes",
+		"std::uint16_t":                    "cinttypes",
+		"std::uint32_t":                    "cinttypes",
+		"std::uint64_t":                    "cinttypes",
+		"printf":                           "cstdio",
+		"fprintf":                          "cstdio",
+		"sprintf":                          "cstdio",
+		"snprintf":                         "cstdio",
+		"std::stringstream":                "sstream",
+		"std::is_pointer":                  "type_traits",
+		"std::experimental::is_detected_v": "experimental/type_traits",
 		// TODO: complex64, complex128
 	}
 	includeString := ""
@@ -702,17 +725,22 @@ func HashElements(source, keyType string, keyForBoth bool) string {
 }
 
 func CreateStrMethod(varNames []string) string {
-	s := "std::string _str() {\n"
-	s += `  std::stringstream ss; ss << "{" `;
+	var sb strings.Builder
+	sb.WriteString("std::string _str() {\n")
+	sb.WriteString("  std::stringstream ss;\n")
+	sb.WriteString("  ss << \"{\";\n")
 	for i, varName := range varNames {
 		if i > 0 {
-			s += ` << " " `
+			sb.WriteString("  ss << \" \";\n")
 		}
-		s += " << " + varName
+		sb.WriteString("  _format_output(ss, ")
+		sb.WriteString(varName)
+		sb.WriteString(");\n")
 	}
-	s += ` << "}";`
-	s += "\n  return ss.str(); }"
-	return s
+	sb.WriteString("  ss << \"}\";")
+	sb.WriteString("  return ss.str();\n")
+	sb.WriteString("}\n")
+	return sb.String()
 }
 
 func go2cpp(source string) string {
@@ -760,7 +788,7 @@ func go2cpp(source string) string {
 		} else if inConst && strings.Contains(trimmedLine, ")") {
 			inConst = false
 			continue
-		} else if inVar || (inStruct && trimmedLine != "}"){
+		} else if inVar || (inStruct && trimmedLine != "}") {
 			name := ""
 			newLine, name = VarDeclaration(line)
 			if inStruct {
@@ -881,7 +909,7 @@ func go2cpp(source string) string {
 				// Create a _str() method for this struct
 				newLine = CreateStrMethod(structVarNames) + newLine + ";"
 
-				inStruct = false;
+				inStruct = false
 			}
 			newLine += "\n"
 		}
