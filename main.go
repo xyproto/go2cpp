@@ -521,7 +521,12 @@ func ElseIfSentence(source string) (output string) {
 
 func TypeReplace(source string) string {
 	// TODO: uintptr, complex64 and complex128
-	switch strings.TrimSpace(source) {
+	trimmed := strings.TrimSpace(source)
+	// For pointer types, move the star
+	if strings.HasPrefix(trimmed, "*") {
+		trimmed = trimmed[1:] + "*"
+	}
+	switch trimmed {
 	case "string":
 		return "std::string"
 	case "float64":
@@ -551,7 +556,7 @@ func TypeReplace(source string) string {
 	case "uint":
 		return "unsigned int"
 	default:
-		return source
+		return trimmed
 	}
 }
 
@@ -816,7 +821,7 @@ func CreateStrMethod(varNames []string) string {
 }
 
 func go2cpp(source string) string {
-    if strings.Contains(source, "`") {
+	if strings.Contains(source, "`") {
 		fmt.Fprintf(os.Stderr, "backticks in the source code are not yet supported\n")
 		os.Exit(1)
 	}
