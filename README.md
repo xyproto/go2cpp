@@ -152,6 +152,10 @@ auto main() -> int
 
 # TODO
 
+## Syntactic elements
+
+- [ ] backtick quoted strings: <code>`</code>
+
 ## Keywords
 
 - [x] `break`

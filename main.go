@@ -816,6 +816,11 @@ func CreateStrMethod(varNames []string) string {
 }
 
 func go2cpp(source string) string {
+    if strings.Contains(source, "`") {
+		fmt.Fprintf(os.Stderr, "backticks in the source code are not yet supported\n")
+		os.Exit(1)
+	}
+
 	lines := []string{}
 	currentReturnType := ""
 	currentFunctionName := ""
