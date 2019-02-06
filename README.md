@@ -155,6 +155,7 @@ auto main() -> int
 ## Syntactic elements
 
 - [ ] backtick quoted strings: <code>`</code>
+- [ ] `iota`
 
 ## Keywords
 
