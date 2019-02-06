@@ -65,14 +65,14 @@ func between(s, a, b string, lastA, lastB bool) string {
 // leftBetween searches from the left and returns the first string that is
 // between a and b.
 func leftBetween(s, a, b string) string {
-	return between(s, a, b, false, false);
+	return between(s, a, b, false, false)
 }
 
 // greedyBetween searches from the left for a then
 // searches as far as possible for b, before returning
 // the string that is between a and b.
 func greedyBetween(s, a, b string) string {
-	return between(s, a, b, false, true);
+	return between(s, a, b, false, true)
 }
 
 // TODO: Make more robust, this easily breaks
@@ -117,7 +117,7 @@ func WholeProgramReplace(source string) (output string) {
 	return output
 }
 
-func AddFunctions(source string) (output string) {
+func AddFunctions(source string, useFormatOutput, haveStructs bool) (output string) {
 	output = source
 	replacements := map[string]string{
 		"strings.Contains":  `inline auto stringsContains(std::string const& a, std::string const& b) -> bool { return a.find(b) != std::string::npos; }`,
@@ -129,7 +129,7 @@ using _str_t = decltype( std::declval<T&>()._str() );
 template<typename T>
 using _p_str_t = decltype( std::declval<T&>()->_str() );
 
-template <typename T> std::ostream* _format_output(std::ostream& out, T x)
+template <typename T> void _format_output(std::ostream& out, T x)
 {
     if constexpr (std::is_same<T, bool>::value) {
         out << std::boolalpha << x << std::noboolalpha;
@@ -142,9 +142,20 @@ template <typename T> std::ostream* _format_output(std::ostream& out, T x)
     } else {
         out << x;
     }
-    return &out;
 }`,
 		"strings.TrimSpace": `inline auto stringsTrimSpace(std::string const& s) -> std::string { std::string news {}; for (auto l : s) { if (l != ' ' && l != '\n' && l != '\t' && l != '\v' && l != '\f' && l != '\r') { news += l; } } return news; }`,
+	}
+	if useFormatOutput && !haveStructs {
+		replacements["_format_output"] = `template <typename T> void _format_output(std::ostream& out, T x)
+{
+    if constexpr (std::is_same<T, bool>::value) {
+        out << std::boolalpha << x << std::noboolalpha;
+    } else if constexpr (std::is_integral<T>::value) {
+        out << static_cast<int>(x);
+    } else {
+        out << x;
+    }
+}`
 	}
 	for k, v := range replacements {
 		if strings.Contains(output, k) {
@@ -314,6 +325,15 @@ func SplitArgs(s string) []string {
 	return args
 }
 
+func isNum(s string) bool {
+	_, err := strconv.ParseFloat(s, 64)
+	isFloat := (err == nil)
+	_, err = strconv.ParseInt(s, 0, 64)
+	isInt := (err == nil)
+	return isFloat || isInt
+}
+
+// Will return the transformed string, and a bool if pretty printing may be needed
 func PrintStatement(source string) (string, bool) {
 
 	// Pick out and trim all arguments given to the print functon
@@ -343,9 +363,16 @@ func PrintStatement(source string) (string, bool) {
 			allLiteralStrings = false
 		}
 	}
-	mayNeedPrettyPrint := !allLiteralStrings
 
-	//fmt.Println("ALL LITERAL STRINGS", allLiteralStrings)
+	// Check if all the arguments are literal numbers
+	allLiteralNumbers := true
+	for _, arg := range args {
+		if !isNum(arg) {
+			allLiteralNumbers = false
+		}
+	}
+
+	mayNeedPrettyPrint := !allLiteralStrings || !allLiteralNumbers
 
 	// --- enough information gathered, it's time to build the output code ---
 
@@ -396,14 +423,14 @@ func PrintStatement(source string) (string, bool) {
 				return outputName + pipeNewline, false
 			}
 		}
-		if allLiteralStrings {
+		if allLiteralStrings || allLiteralNumbers {
 			return outputName + pipe + args[0] + pipeNewline, false
 		}
 		output := "_format_output(" + outputName + ", " + args[0] + ")"
 		if addNewline {
 			output += ";\n" + outputName + pipeNewline
 		}
-		return output, mayNeedPrettyPrint
+		return output, true
 	}
 
 	// Several arguments given
@@ -414,8 +441,11 @@ func PrintStatement(source string) (string, bool) {
 	lastIndex := len(args) - 1
 	for i, arg := range args {
 		//fmt.Println("ARGUMENT", i, arg)
-		// Is it a literal string?
 		if strings.HasPrefix(arg, "\"") {
+			// Literal string
+			output += pipe + arg
+		} else if isNum(arg) {
+			// Literal number
 			output += pipe + arg
 		} else {
 			if i == 0 {
@@ -777,7 +807,6 @@ func go2cpp(source string) string {
 	lines := []string{}
 	currentReturnType := ""
 	currentFunctionName := ""
-	structVarNames := []string{}
 	inImport := false
 	inVar := false
 	inType := false
@@ -786,7 +815,10 @@ func go2cpp(source string) string {
 	// Keep track of encountered hash maps
 	// TODO: Use reflection instead to loop either one way or the other. The hash map may be defined in another package.
 	encounteredHashMaps := []string{}
+	// Keep track of encountered struct names
+	encounteredStructNames := []string{}
 	inStruct := false
+	usePrettyPrint := false
 	for _, line := range strings.Split(source, "\n") {
 		newLine := line
 		trimmedLine := strings.TrimSpace(line)
@@ -823,14 +855,14 @@ func go2cpp(source string) string {
 			newLine, name = VarDeclaration(line)
 			if inStruct {
 				// Gathering variable names from this struct
-				structVarNames = append(structVarNames, name)
+				encounteredStructNames = append(encounteredStructNames, name)
 			}
 		} else if inType {
 			prevInStruct := inStruct
 			newLine, inStruct = TypeDeclaration(line)
 			if !prevInStruct && inStruct {
 				// Entering struct, reset the slice that is used to gather variable names
-				structVarNames = []string{}
+				encounteredStructNames = []string{}
 			}
 		} else if inConst {
 			newLine = ConstDeclaration(line)
@@ -850,8 +882,12 @@ func go2cpp(source string) string {
 				// Just use the standard tuple
 			}
 		} else if strings.HasPrefix(trimmedLine, "fmt.Print") || strings.HasPrefix(trimmedLine, "print") {
-			// The ignored return value is if "pretty print" functionality may be needed, for structs and classes
-			newLine, _ = PrintStatement(line)
+			// pp is if "pretty print" functionality may be needed, for non-literal strings and numbers
+			pp := false
+			newLine, pp = PrintStatement(line)
+			if pp {
+				usePrettyPrint = true
+			}
 		} else if strings.Contains(trimmedLine, "=") && !strings.HasPrefix(trimmedLine, "var ") && !strings.HasPrefix(trimmedLine, "if ") && !strings.HasPrefix(trimmedLine, "const ") && !strings.HasPrefix(trimmedLine, "type ") {
 			elem := strings.Split(trimmedLine, "=")
 			left := strings.TrimSpace(elem[0])
@@ -937,7 +973,7 @@ func go2cpp(source string) string {
 			// If the struct is being closed, add a semicolon
 			if inStruct {
 				// Create a _str() method for this struct
-				newLine = CreateStrMethod(structVarNames) + newLine + ";"
+				newLine = CreateStrMethod(encounteredStructNames) + newLine + ";"
 
 				inStruct = false
 			}
@@ -953,7 +989,7 @@ func go2cpp(source string) string {
 	// The order matters
 	output = LiteralStrings(output)
 	output = WholeProgramReplace(output)
-	output = AddFunctions(output)
+	output = AddFunctions(output, usePrettyPrint, len(encounteredStructNames) > 0)
 	output = AddIncludes(output)
 
 	return output
