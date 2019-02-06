@@ -35,22 +35,44 @@ var (
 )
 
 // between returns the string between two given strings, or the original string
-// front can be set to false to search for b from the end of s
-func between(s, a, b string, front bool) string {
-	apos := strings.Index(s, a)
+// firstA specifies if the first or last instance of a should be used
+// firstB specifies if the first or last instance of b should be used
+func between(s, a, b string, lastA, lastB bool) string {
+	var apos int
+	if lastA {
+		apos = strings.LastIndex(s, a)
+	} else {
+		apos = strings.Index(s, a)
+	}
 	if apos == -1 {
 		return s
 	}
 	var bpos int
-	if front {
-		bpos = strings.Index(s, b)
-	} else {
+	if lastB {
 		bpos = strings.LastIndex(s, b)
+	} else {
+		bpos = strings.Index(s, b)
 	}
 	if bpos == -1 {
 		return s
 	}
+	if bpos < apos {
+		return s[bpos+len(b) : apos]
+	}
 	return s[apos+len(a) : bpos]
+}
+
+// leftBetween searches from the left and returns the first string that is
+// between a and b.
+func leftBetween(s, a, b string) string {
+	return between(s, a, b, false, false);
+}
+
+// greedyBetween searches from the left for a then
+// searches as far as possible for b, before returning
+// the string that is between a and b.
+func greedyBetween(s, a, b string) string {
+	return between(s, a, b, false, true);
 }
 
 // TODO: Make more robust, this easily breaks
@@ -167,7 +189,7 @@ func FunctionRetvals(source string) (output string) {
 	}
 	output = source
 	if strings.Contains(output, "(") {
-		s := between(output, "(", ")", false)
+		s := greedyBetween(output, "(", ")")
 		retvals := FunctionArguments(s)
 		if strings.Contains(retvals, ",") {
 			output = "(" + retvals + ")"
@@ -180,7 +202,7 @@ func FunctionRetvals(source string) (output string) {
 
 // CPPTypes picks out the types given a list of C++ arguments with name and type
 func CPPTypes(args string) string {
-	words := strings.Split(between(args, "(", ")", true), ",")
+	words := strings.Split(leftBetween(args, "(", ")"), ",")
 	var atypes []string
 	for _, word := range words {
 		elems := strings.Split(strings.TrimSpace(word), " ")
@@ -196,13 +218,21 @@ func FunctionSignature(source string) (output, returntype, name string) {
 		return source, "", ""
 	}
 	output = source
-	args := FunctionArguments(between(output, "(", ")", true))
-	rets := FunctionRetvals(between(output, ")", "{", true))
+	args := FunctionArguments(leftBetween(output, "(", ")"))
+	// Has return values in a paranthesis
+	var rets string
+	if strings.Contains(output, ") (") {
+		// There is a parenthesis with return types in the function signature
+		rets = FunctionRetvals(between(output, ")", "{", false, true))
+	} else {
+		// There is not a parenthesis with return types in the function signature
+		rets = FunctionRetvals(between(output, ")", "{", true, true))
+	}
 	if strings.Contains(rets, ",") {
 		// Multiple return
 		rets = tupleType + "<" + CPPTypes(rets) + ">"
 	}
-	name = between(output, "func ", "(", true)
+	name = leftBetween(output, "func ", "(")
 	if name == "main" {
 		rets = "int"
 	}
@@ -287,7 +317,7 @@ func SplitArgs(s string) []string {
 func PrintStatement(source string) (string, bool) {
 
 	// Pick out and trim all arguments given to the print functon
-	args := SplitArgs(between(strings.TrimSpace(source), "(", ")", false))
+	args := SplitArgs(greedyBetween(strings.TrimSpace(source), "(", ")"))
 
 	// Identify the print function
 	if !strings.Contains(source, "(") {
@@ -449,13 +479,13 @@ func AddIncludes(source string) (output string) {
 
 func IfSentence(source string) (output string) {
 	output = source
-	expression := strings.TrimSpace(between(source, "if", "{", true))
+	expression := strings.TrimSpace(leftBetween(source, "if", "{"))
 	return "if (" + expression + ") {"
 }
 
 func ElseIfSentence(source string) (output string) {
 	output = source
-	expression := strings.TrimSpace(between(source, "} else if", "{", true))
+	expression := strings.TrimSpace(leftBetween(source, "} else if", "{"))
 	return "} else if (" + expression + ") {"
 }
 
@@ -513,7 +543,7 @@ func TypeReplace(source string) string {
 // * [_] for ;; {
 // * not possible: for x := range 10 {
 func ForLoop(source string, encounteredHashMaps []string) string {
-	expression := strings.TrimSpace(between(source, "for", "{", true))
+	expression := strings.TrimSpace(leftBetween(source, "for", "{"))
 	if expression == "" {
 		// endless loop
 		return "for (;;) {"
@@ -573,7 +603,7 @@ func ForLoop(source string, encounteredHashMaps []string) string {
 	if strings.Contains(expression, ":=") {
 		if strings.HasPrefix(expression, "_,") && strings.Contains(expression, "range") {
 			// For each, no index
-			varname := between(expression, ",", ":", true)
+			varname := leftBetween(expression, ",", ":")
 			fields := strings.SplitN(expression, "range ", 2)
 			listname := fields[1]
 			// C++11 and later for each loop
@@ -605,7 +635,7 @@ func Switch(source string) (output string) {
 
 func Case(source string) (output string) {
 	output = source
-	s := between(output, " ", ":", true)
+	s := leftBetween(output, " ", ":")
 	if firstCase {
 		firstCase = false
 		output = "if ("
@@ -843,13 +873,13 @@ func go2cpp(source string) string {
 						newLine = line
 
 					}
-					theType := TypeReplace(between(right, "]", "{", true))
+					theType := TypeReplace(leftBetween(right, "]", "{"))
 					fields := strings.SplitN(right, "{", 2)
 					newLine = theType + " " + strings.TrimSpace(left) + "[] {" + fields[1]
 				} else if strings.HasPrefix(right, "map[") {
-					keyType := TypeReplace(between(right, "map[", "]", true))
-					valueType := TypeReplace(between(right, "]", "{", true))
-					elements := between(right, "{", "}", true)
+					keyType := TypeReplace(leftBetween(right, "map[", "]"))
+					valueType := TypeReplace(leftBetween(right, "]", "{"))
+					elements := leftBetween(right, "{", "}")
 					hashName := strings.TrimSpace(left)
 					newLine = "std::unordered_map<" + keyType + ", " + valueType + "> " + hashName + " " + HashElements(elements, keyType, false)
 					encounteredHashMaps = append(encounteredHashMaps, hashName)
