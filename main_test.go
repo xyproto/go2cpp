@@ -13,12 +13,12 @@ import (
 const testcaseDirectory = "testcases/"
 
 var testPrograms = []string{
-	"string_map",
-	"struct",
-	"var2",
 	"for_range_map_key_value",
 	"for_range_map_value",
 	"for_range_map_key",
+	"string_map",
+	"struct",
+	"var2",
 	"for_range_both",
 	"for_endless",
 	"for_range_single",
@@ -45,6 +45,7 @@ var testPrograms = []string{
 
 // Programs with unordered words as the output
 var unorderedOutput = []string{
+	"string_map",
 	"for_range_map_key_value",
 	"for_range_map_value",
 	"for_range_map_key",

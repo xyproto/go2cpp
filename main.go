@@ -762,10 +762,22 @@ func ConstDeclaration(source string) (output string) {
 // keyType is the type of the key, in C++, for instance "std::string"
 // if keyForBoth is true, a hash(key)->key map is created,
 // if not, a hash(key)->value map is created.
+// This will not work for multiline hash map initializations.
+// TODO: Handle keys and values that look like this: "\": \"" (containing quotes, a colon and a space)
 func HashElements(source, keyType string, keyForBoth bool) string {
+	// Check if the given source line contains either a separating or a trailing comma
 	if !strings.Contains(source, ",") {
 		return source
 	}
+	// Check if there is only one pair
+	if strings.Count(source, ": ") == 1 {
+		pairElements := strings.SplitN(source, ": ", 2)
+		if len(pairElements) != 2 {
+			panic("This should be two elements, separated by a colon and a space " + source)
+		}
+		return "{ " + strings.TrimSpace(pairElements[0]) + ", " + strings.TrimSpace(pairElements[1]) + " }, "
+	}
+	// Multiple pairs
 	pairs := strings.Split(source, ",")
 	output := "{"
 	first := true
@@ -775,11 +787,11 @@ func HashElements(source, keyType string, keyForBoth bool) string {
 		} else {
 			first = false
 		}
-		pairElements := strings.SplitN(pair, ":", 2)
+		pairElements := strings.SplitN(pair, ": ", 2)
 		if len(pairElements) != 2 {
-			panic("This should be two elements, separated by a colon: " + pair)
+			panic("This should be two elements, separated by a colon and a space: " + pair)
 		}
-		output += "{ " + pairElements[0] + ", " + pairElements[1] + " }"
+		output += "{ " + strings.TrimSpace(pairElements[0]) + ", " + strings.TrimSpace(pairElements[1]) + " }"
 	}
 	return output + "}"
 }
@@ -811,6 +823,8 @@ func go2cpp(source string) string {
 	inVar := false
 	inType := false
 	inConst := false
+	inHashMap := false
+	hashKeyType := ""
 	curlyCount := 0
 	// Keep track of encountered hash maps
 	// TODO: Use reflection instead to loop either one way or the other. The hash map may be defined in another package.
@@ -850,6 +864,9 @@ func go2cpp(source string) string {
 		} else if inConst && strings.Contains(trimmedLine, ")") {
 			inConst = false
 			continue
+		} else if inHashMap && trimmedLine == "}" {
+			inHashMap = false
+			newLine = trimmedLine + ";"
 		} else if inVar || (inStruct && trimmedLine != "}") {
 			name := ""
 			newLine, name = VarDeclaration(line)
@@ -866,6 +883,8 @@ func go2cpp(source string) string {
 			}
 		} else if inConst {
 			newLine = ConstDeclaration(line)
+		} else if inHashMap {
+			newLine = HashElements(trimmedLine, hashKeyType, false)
 		} else if strings.HasPrefix(trimmedLine, "func") {
 			newLine, currentReturnType, currentFunctionName = FunctionSignature(trimmedLine)
 		} else if strings.HasPrefix(trimmedLine, "for") {
@@ -913,12 +932,21 @@ func go2cpp(source string) string {
 					fields := strings.SplitN(right, "{", 2)
 					newLine = theType + " " + strings.TrimSpace(left) + "[] {" + fields[1]
 				} else if strings.HasPrefix(right, "map[") {
+					hashName := strings.TrimSpace(left)
+					encounteredHashMaps = append(encounteredHashMaps, hashName)
+
 					keyType := TypeReplace(leftBetween(right, "map[", "]"))
 					valueType := TypeReplace(leftBetween(right, "]", "{"))
-					elements := leftBetween(right, "{", "}")
-					hashName := strings.TrimSpace(left)
-					newLine = "std::unordered_map<" + keyType + ", " + valueType + "> " + hashName + " " + HashElements(elements, keyType, false)
-					encounteredHashMaps = append(encounteredHashMaps, hashName)
+
+					closingBracket := strings.HasSuffix(strings.TrimSpace(right), "}")
+					if !closingBracket {
+						inHashMap = true
+						hashKeyType = keyType
+						newLine = "std::unordered_map<" + keyType + ", " + valueType + "> " + hashName + " {"
+					} else {
+						elements := leftBetween(right, "{", "}")
+						newLine = "std::unordered_map<" + keyType + ", " + valueType + "> " + hashName + " " + HashElements(elements, keyType, false)
+					}
 				} else {
 					newLine = "auto " + strings.TrimSpace(left) + " = " + strings.TrimSpace(right)
 				}
