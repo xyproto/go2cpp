@@ -13,8 +13,8 @@ import (
 const testcaseDirectory = "testcases/"
 
 var testPrograms = []string{
-	"type_alias",
-	//"string_map",
+	"string_map",
+	"struct",
 	"var2",
 	"for_range_map_key_value",
 	"for_range_map_value",
