@@ -747,6 +747,10 @@ func TypeDeclaration(source string) (string, bool) {
 func ConstDeclaration(source string) (output string) {
 	output = source
 	fields := strings.SplitN(source, "=", 2)
+	if len(fields) != 2 {
+		// This happens if there is only a constant name, with no value assigned
+		panic("no support for iota constants yet")
+	}
 	left := strings.TrimSpace(fields[0])
 	right := strings.TrimSpace(fields[1])
 	words := strings.Split(left, " ")
@@ -823,6 +827,10 @@ func CreateStrMethod(varNames []string) string {
 func go2cpp(source string) string {
 	if strings.Contains(source, "`") {
 		fmt.Fprintf(os.Stderr, "backticks in the source code are not yet supported\n")
+		os.Exit(1)
+	}
+	if strings.Contains(source, "iota") {
+		fmt.Fprintf(os.Stderr, "iota in the source code are not yet supported\n")
 		os.Exit(1)
 	}
 
