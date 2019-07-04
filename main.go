@@ -81,27 +81,27 @@ func LiteralStrings(source string) string {
 	// Temporary
 	return source
 
-	output := source
-	replacements := map[string]string{
-		"\")":  "\"s)",
-		"\";":  "\"s;",
-		"\",":  "\"s,",
-		"\"}":  "\"s}",
-		"\" }": "\"s }",
-		"\" )": "\"s )",
-		"\":":  "\"s:",
-	}
-	hasLiteral := false
-	for k, v := range replacements {
-		if strings.Contains(output, k) {
-			output = strings.Replace(output, k, v, -1)
-			hasLiteral = true
-		}
-	}
-	if hasLiteral {
-		output = "\nusing namespace std::string_literals;\n" + output
-	}
-	return output
+	//output := source
+	//replacements := map[string]string{
+	//	"\")":  "\"s)",
+	//	"\";":  "\"s;",
+	//	"\",":  "\"s,",
+	//	"\"}":  "\"s}",
+	//	"\" }": "\"s }",
+	//	"\" )": "\"s )",
+	//	"\":":  "\"s:",
+	//}
+	//hasLiteral := false
+	//for k, v := range replacements {
+	//	if strings.Contains(output, k) {
+	//		output = strings.Replace(output, k, v, -1)
+	//		hasLiteral = true
+	//	}
+	//}
+	//if hasLiteral {
+	//	output = "\nusing namespace std::string_literals;\n" + output
+	//}
+	//return output
 }
 
 // TODO: Avoid whole-program replacements, if possible
@@ -230,7 +230,7 @@ func FunctionSignature(source string) (output, returntype, name string) {
 	}
 	output = source
 	args := FunctionArguments(leftBetween(output, "(", ")"))
-	// Has return values in a paranthesis
+	// Has return values in a parenthesis
 	var rets string
 	if strings.Contains(output, ") (") {
 		// There is a parenthesis with return types in the function signature
@@ -919,8 +919,8 @@ func go2cpp(source string) string {
 				// Just use the standard tuple
 			}
 		} else if strings.HasPrefix(trimmedLine, "fmt.Print") || strings.HasPrefix(trimmedLine, "print") {
-			// pp is if "pretty print" functionality may be needed, for non-literal strings and numbers
-			pp := false
+			// _ is if "pretty print" functionality may be needed, for non-literal strings and numbers
+			var pp bool
 			newLine, pp = PrintStatement(line)
 			if pp {
 				usePrettyPrint = true
@@ -943,7 +943,7 @@ func go2cpp(source string) string {
 				if strings.HasPrefix(right, "[]") {
 					if !strings.Contains(right, "{") {
 						fmt.Fprintln(os.Stderr, "UNRECOGNIZED LINE: "+trimmedLine)
-						newLine = line
+						//newLine = line
 
 					}
 					theType := TypeReplace(leftBetween(right, "]", "{"))
