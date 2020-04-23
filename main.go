@@ -1109,7 +1109,7 @@ func main() {
 	}
 
 	// Compile the string in cppSource
-	cmd2 := exec.Command("g++", "-x", "c++", "-std=c++17", "-O2", "-pipe", "-fPIC", "-Wfatal-errors", "-s", "-o", "/dev/stdout", "-")
+	cmd2 := exec.Command("g++", "-x", "c++", "-std=c++2a", "-O2", "-pipe", "-fPIC", "-Wfatal-errors", "-s", "-o", "/dev/stdout", "-")
 	cmd2.Stdin = strings.NewReader(cppSource)
 	var compiled bytes.Buffer
 	var errors bytes.Buffer
