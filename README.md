@@ -1,6 +1,6 @@
 # go2cpp
 
-Compiles Go to native executables via C++17.
+Compiles Go to native executables via C++20.
 
 One of the goals is for the compiler to be able to compile itself.
 
@@ -27,13 +27,13 @@ Compile to executable:
 
     go2cpp main.go -o main
 
-Output what the intermediate C++17 code looks like:
+Output what the intermediate C++20 code looks like:
 
     go2cpp main.go
 
 ## Requirements
 
-* `g++` with support for C++17
+* `g++` with support for C++20
 * `clang-format`
 
 ## Example transformations
@@ -203,4 +203,4 @@ auto main() -> int
 - [x] `strings.TrimSpace`
 - [ ] All the rest
 
-Ideally, all code in the standard library should transpile correctly to C++17.
+Ideally, all code in the standard library should transpile correctly to C++20.

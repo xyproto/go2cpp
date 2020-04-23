@@ -2,7 +2,7 @@ package main
 
 // Plan:
 // 1. Read in the source code
-// 2. Convert it to C++17
+// 2. Convert it to C++20
 // 3. Compile it
 
 import (

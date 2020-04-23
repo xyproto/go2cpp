@@ -10,7 +10,7 @@ if [ ! -e "$fn" ]; then
 fi
 echo 'Go program:'
 bat "$fn" || exit 1
-echo 'C++17 program:'
+echo 'C++20 program:'
 mkdir -p test
 ./go2cpp "$fn" -o | tee test/main.cpp | bat -l cpp
 echo "Go output:"
