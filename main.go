@@ -334,6 +334,16 @@ func isNum(s string) bool {
 	return isFloat || isInt
 }
 
+// stripSingleLineComment will strip away trailing single-line comments
+func stripSingleLineComment(line string) string {
+	commentMarker := "//"
+	if strings.Count(line, commentMarker) == 1 {
+		p := strings.Index(line, commentMarker)
+		return strings.TrimSpace(line[:p])
+	}
+	return line
+}
+
 // Will return the transformed string, and a bool if pretty printing may be needed
 func PrintStatement(source string) (string, bool) {
 
@@ -858,7 +868,7 @@ func go2cpp(source string) string {
 	usePrettyPrint := false
 	for _, line := range strings.Split(source, "\n") {
 		newLine := line
-		trimmedLine := strings.TrimSpace(line)
+		trimmedLine := stripSingleLineComment(strings.TrimSpace(line))
 		// TODO: A multiline string could have lines starting with //, make sure to support this
 		if strings.HasPrefix(trimmedLine, "//") {
 			lines = append(lines, trimmedLine)
@@ -892,14 +902,14 @@ func go2cpp(source string) string {
 			newLine = trimmedLine + ";"
 		} else if inVar || (inStruct && trimmedLine != "}") {
 			name := ""
-			newLine, name = VarDeclaration(line)
+			newLine, name = VarDeclaration(trimmedLine)
 			if inStruct {
 				// Gathering variable names from this struct
 				encounteredStructNames = append(encounteredStructNames, name)
 			}
 		} else if inType {
 			prevInStruct := inStruct
-			newLine, inStruct = TypeDeclaration(line)
+			newLine, inStruct = TypeDeclaration(trimmedLine)
 			if !prevInStruct && inStruct {
 				// Entering struct, reset the slice that is used to gather variable names
 				encounteredStructNames = []string{}
@@ -926,7 +936,7 @@ func go2cpp(source string) string {
 		} else if strings.HasPrefix(trimmedLine, "fmt.Print") || strings.HasPrefix(trimmedLine, "print") {
 			// _ is if "pretty print" functionality may be needed, for non-literal strings and numbers
 			var pp bool
-			newLine, pp = PrintStatement(line)
+			newLine, pp = PrintStatement(trimmedLine)
 			if pp {
 				usePrettyPrint = true
 			}
@@ -1003,9 +1013,9 @@ func go2cpp(source string) string {
 			// Ignore variable name since it's not in a struct
 			newLine, _ = VarDeclaration(line)
 		} else if strings.HasPrefix(trimmedLine, "type ") {
-			newLine, inStruct = TypeDeclaration(line)
+			newLine, inStruct = TypeDeclaration(trimmedLine)
 		} else if strings.HasPrefix(trimmedLine, "const ") {
-			newLine = ConstDeclaration(line)
+			newLine = ConstDeclaration(trimmedLine)
 		} else if trimmedLine == "fallthrough" {
 			newLine = "goto " + LabelName() + "; // fallthrough"
 			switchLabel = LabelName()
@@ -1018,7 +1028,7 @@ func go2cpp(source string) string {
 			}
 		}
 		if currentFunctionName == "main" && trimmedLine == "}" && curlyCount == 0 { // curlyCount has already been decreased for this line
-			newLine = strings.Replace(line, "}", "return 0;\n}", 1)
+			newLine = strings.Replace(trimmedLine, "}", "return 0;\n}", 1)
 		}
 		if strings.HasSuffix(trimmedLine, "}") {
 			// If the struct is being closed, add a semicolon
