@@ -32,6 +32,7 @@ var (
 	firstCase               bool
 	switchLabel             string
 	labelCounter            int
+	iotaNumber              int // used for simple increases of iota constants
 )
 
 // between returns the string between two given strings, or the original string
@@ -747,19 +748,27 @@ func TypeDeclaration(source string) (string, bool) {
 func ConstDeclaration(source string) (output string) {
 	output = source
 	fields := strings.SplitN(source, "=", 2)
-	if len(fields) != 2 {
+	if len(fields) == 0 {
+		panic("no fields in const declaration")
+	} else if len(fields) == 1 {
 		// This happens if there is only a constant name, with no value assigned
-		panic("no support for iota constants yet")
+		// Only simple iota incrementation is supported so far (not .. << ..)
+		iotaNumber++
+		return "const auto " + strings.TrimSpace(fields[0]) + " = " + strconv.Itoa(iotaNumber)
 	}
 	left := strings.TrimSpace(fields[0])
 	right := strings.TrimSpace(fields[1])
 	words := strings.Split(left, " ")
+	if right == "iota" {
+		iotaNumber = 0
+		right = strconv.Itoa(iotaNumber)
+	}
 	if len(words) == 1 {
 		// No type
 		return "const auto " + left + " = " + right
 	} else if len(words) == 2 {
 		if words[0] == "const" {
-			return "const auto " + " " + words[1] + " = " + right
+			return "const auto " + words[1] + " = " + right
 		}
 		return "const " + TypeReplace(words[1]) + " " + words[0] + " = " + right
 	}
@@ -827,10 +836,6 @@ func CreateStrMethod(varNames []string) string {
 func go2cpp(source string) string {
 	if strings.Contains(source, "`") {
 		fmt.Fprintf(os.Stderr, "backticks in the source code are not yet supported\n")
-		os.Exit(1)
-	}
-	if strings.Contains(source, "iota") {
-		fmt.Fprintf(os.Stderr, "iota in the source code are not yet supported\n")
 		os.Exit(1)
 	}
 
