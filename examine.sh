@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# examine.sh depends on go, sakemake and bat
+# examine.sh depends on go, cxx (https://github.com/xyproto/cxx) and bat
 #
 go build
 fn=$(go test | grep "Compiling and running" | cut -d"]" -f2- | cut -d" " -f5 | tail -1)
