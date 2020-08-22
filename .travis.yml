@@ -8,5 +8,5 @@ go:
   - "1.14"
   - "1.15"
 
-ignore:
-  - testcases
+script:
+  - go build && go test
