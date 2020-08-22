@@ -1,4 +1,4 @@
-dist: bionic
+dist: precise
 language: go
 
 go:
@@ -8,6 +8,4 @@ go:
   - "1.13"
   - "1.14"
   - "1.15"
-
-script:
-  - go build && go test
+  - tip
