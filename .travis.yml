@@ -1,4 +1,4 @@
-dist: precise
+dist: focal
 language: go
 
 go:
