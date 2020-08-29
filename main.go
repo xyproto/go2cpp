@@ -632,7 +632,7 @@ func Switch(source string) (output string) {
 	}
 	switchExpressionCounter++
 	firstCase = true
-	return "auto " + SwitchExpressionVariable() + " = " + output + "; // switch on " + output
+	return "auto&& " + SwitchExpressionVariable() + " = " + output + "; // switch on " + output
 }
 
 func Case(source string) (output string) {
@@ -1087,7 +1087,7 @@ func main() {
 	defer os.Remove(tempFileName)
 
 	// Compile the string in cppSource
-	cmd2 := exec.Command("g++", "-x", "c++", "-std=c++2a", "-O2", "-fPIC", "-Wfatal-errors", "-s", "-o", tempFileName, "-")
+	cmd2 := exec.Command("g++", "-x", "c++", "-std=c++2a", "-O2", "-pipe", "-fPIC", "-Wfatal-errors", "-s", "-o", tempFileName, "-")
 	cmd2.Stdin = strings.NewReader(cppSource)
 	var compiled bytes.Buffer
 	var errors bytes.Buffer
@@ -1105,13 +1105,11 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	//defaultOutputFilename := filepath.Base(os.Getenv("PWD"))
 	outputFilename := ""
 	if len(os.Args) > 3 {
 		outputFilename = os.Args[3]
 	}
 	if outputFilename != "" {
-		//err = ioutil.WriteFile(outputFilename, compiled.Bytes(), 0755)
 		err = ioutil.WriteFile(outputFilename, compiledBytes, 0755)
 		if err != nil {
 			log.Fatal(err)

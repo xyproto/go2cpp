@@ -21,9 +21,17 @@ func has(l []string, s string) bool {
 	return false
 }
 
-func hasInt(ints []int, x int) bool {
+func isNum(s string) bool {
+	_, err := strconv.ParseFloat(s, 64)
+	isFloat := (err == nil)
+	_, err = strconv.ParseInt(s, 0, 64)
+	isInt := (err == nil)
+	return isFloat || isInt
+}
+
+func hasInt(ints []int, i int) bool {
 	for _, z := range ints {
-		if z == x {
+		if z == i {
 			return true
 		}
 	}
@@ -39,12 +47,4 @@ func splitAtAndTrim(s string, poss []int) []string {
 	}
 	l[len(poss)] = strings.TrimSpace(s[startpos:])
 	return l
-}
-
-func isNum(s string) bool {
-	_, err := strconv.ParseFloat(s, 64)
-	isFloat := (err == nil)
-	_, err = strconv.ParseInt(s, 0, 64)
-	isInt := (err == nil)
-	return isFloat || isInt
 }
