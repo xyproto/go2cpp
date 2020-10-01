@@ -165,7 +165,7 @@ auto main() -> int
 - [x] `const`
 - [x] `continue`
 - [x] `default`
-- [ ] `defer`
+- [x] `defer`
 - [x] `else`
 - [x] `fallthrough`
 - [x] `for`

@@ -23,6 +23,7 @@ const (
 	keysSuffix    = "_k__"
 	switchPrefix  = "_s__"
 	labelPrefix   = "_l__"
+	deferPrefix   = "_d__"
 )
 
 var endings = []string{"{", ",", "}", ":"}
@@ -33,6 +34,8 @@ var (
 	switchLabel             string
 	labelCounter            int
 	iotaNumber              int // used for simple increases of iota constants
+	deferCounter            int
+	unfinishedDeferFunction bool
 )
 
 // between returns the string between two given strings, or the original string
@@ -248,6 +251,9 @@ func FunctionSignature(source string) (output, returntype, name string) {
 	if name == "main" {
 		rets = "int"
 	}
+	if len(strings.TrimSpace(rets)) == 0 {
+		rets = "void"
+	}
 	output = "auto " + name + "(" + args + ") -> " + rets + " {"
 	return strings.TrimSpace(output), rets, name
 }
@@ -460,6 +466,8 @@ func AddIncludes(source string) (output string) {
 		"std::stringstream":                "sstream",
 		"std::is_pointer":                  "type_traits",
 		"std::experimental::is_detected_v": "experimental/type_traits",
+		"std::shared_ptr":                  "memory",
+		"std::nullopt":                     "optional",
 		// TODO: complex64, complex128
 	}
 	includeString := ""
@@ -472,6 +480,38 @@ func AddIncludes(source string) (output string) {
 		}
 	}
 	return includeString + "\n" + output
+}
+
+func after(keyword, line string) string {
+	pos := strings.Index(line, keyword)
+	if pos == -1 {
+		return line
+	}
+	return line[pos+len(keyword):]
+}
+
+func DeferCall(source string) string {
+	trimmed := strings.TrimSpace(after("defer", source))
+
+	// This function handles three possibilities:
+	// * defer f()
+	// * defer func() { asdf }();
+	// * "defer func() {" and then later "}()"
+
+	if strings.HasPrefix(trimmed, "func() {") && strings.HasSuffix(trimmed, "}()") {
+		// Anonymous function, on one line
+		deferCounter++
+		trimmed = strings.TrimSpace(leftBetween(trimmed, "func() {", "}()"))
+		return "// Anonymous function, on one line\nstd::shared_ptr<void> _defer" + strconv.Itoa(deferCounter) + "(nullptr, [](...) { " + go2cpp(trimmed) + "; });"
+	} else if trimmed == "func() {" {
+		// Anonymous function, on multiple lines
+		deferCounter++
+		unfinishedDeferFunction = true // output "});" later on, when "}()" is encountered in the Go code
+		return "// Anonymous function, on multiple lines\nstd::shared_ptr<void> _defer" + strconv.Itoa(deferCounter) + "(nullptr, [](...) { "
+	} else {
+		// Assume a regular function call
+		return "// Function call on one line\nstd::shared_ptr<void> _defer" + strconv.Itoa(deferCounter) + "(nullptr, [](...) { " + trimmed + "; });"
+	}
 }
 
 func IfSentence(source string) (output string) {
@@ -952,6 +992,8 @@ func go2cpp(source string) string {
 				inImport = false
 			}
 			continue
+		} else if strings.HasPrefix(trimmedLine, "defer ") {
+			newLine = DeferCall(line)
 		} else if strings.HasPrefix(trimmedLine, "if ") {
 			newLine = IfSentence(line)
 		} else if strings.HasPrefix(trimmedLine, "} else if ") {
@@ -976,6 +1018,9 @@ func go2cpp(source string) string {
 			newLine = "goto " + LabelName() + "; // fallthrough"
 			switchLabel = LabelName()
 			labelCounter++
+		} else if unfinishedDeferFunction && trimmedLine == "}()" {
+			unfinishedDeferFunction = false
+			newLine = "});"
 		} else if trimmedLine == "default:" {
 			newLine = "} else { // default case"
 			if switchLabel != "" {

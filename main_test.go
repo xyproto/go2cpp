@@ -13,6 +13,7 @@ import (
 const testcaseDirectory = "testcases/"
 
 var testPrograms = []string{
+	"defer",
 	"iota",
 	//"map_struct",
 	"for_range_map_key_value",
