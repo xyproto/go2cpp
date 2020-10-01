@@ -780,9 +780,14 @@ func ConstDeclaration(source string) (output string) {
 			return "const auto " + words[1] + " = " + right
 		}
 		return "const " + TypeReplace(words[1]) + " " + words[0] + " = " + right
+	} else if len(words) >= 3 { // might be "const unsigned int"
+		if words[0] == "const" {
+			return "const auto " + words[len(words)-1] + " = " + right
+		}
+		return "const " + TypeReplace(words[1] + " " + words[2]) + " " + words[len(words)-1] + " = " + right
 	}
 	// Unrecognized
-	panic("Unrecognized const expression: " + source)
+	panic("go2cpp: unrecognized const expression: " + source)
 }
 
 // HashElements transforms the contents of a map in Go to the contents of an unordered_map in C++
@@ -843,9 +848,15 @@ func CreateStrMethod(varNames []string) string {
 }
 
 func go2cpp(source string) string {
-	if strings.Contains(source, "`") {
-		fmt.Fprintf(os.Stderr, "backticks in the source code are not yet supported\n")
-		os.Exit(1)
+	flipflop := true
+	for strings.Contains(source, "`") {
+		if flipflop {
+			source = strings.Replace(source, "`", "R\"(", 1)
+			flipflop = false
+		} else {
+			source = strings.Replace(source, "`", ")\"", 1)
+			flipflop = true
+		}
 	}
 
 	lines := []string{}
