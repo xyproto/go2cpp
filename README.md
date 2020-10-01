@@ -147,7 +147,7 @@ auto main() -> int
 
 # General info
 
-* Version: 0.2.0
+* Version: 0.3.0
 * License: MIT
 
 # TODO

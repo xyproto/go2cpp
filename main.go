@@ -16,6 +16,8 @@ import (
 	"strings"
 )
 
+const versionString = "xyproto/go2cpp 0.3.0"
+
 const tupleType = "std::tuple"
 
 const (
@@ -1068,7 +1070,10 @@ func main() {
 
 	inputFilename := ""
 	if len(os.Args) > 1 {
-		if os.Args[1] == "--help" {
+		if os.Args[1] == "--version" {
+			fmt.Println(versionString)
+			return
+		} else if os.Args[1] == "--help" {
 			fmt.Println("supported arguments:")
 			fmt.Println(" a .go file as the first argument")
 			fmt.Println("supported options:")
