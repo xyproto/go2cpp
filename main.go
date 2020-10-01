@@ -502,15 +502,16 @@ func DeferCall(source string) string {
 		// Anonymous function, on one line
 		deferCounter++
 		trimmed = strings.TrimSpace(leftBetween(trimmed, "func() {", "}()"))
-		return "// Anonymous function, on one line\nstd::shared_ptr<void> _defer" + strconv.Itoa(deferCounter) + "(nullptr, [](...) { " + go2cpp(trimmed) + "; });"
+		// TODO: let go2cpp() return pure source code + includes to place at the top, not just one large string
+		return "// " + trimmed + "\nstd::shared_ptr<void> _defer" + strconv.Itoa(deferCounter) + "(nullptr, [](...) { " + go2cpp(trimmed) + "; });"
 	} else if trimmed == "func() {" {
 		// Anonymous function, on multiple lines
 		deferCounter++
 		unfinishedDeferFunction = true // output "});" later on, when "}()" is encountered in the Go code
-		return "// Anonymous function, on multiple lines\nstd::shared_ptr<void> _defer" + strconv.Itoa(deferCounter) + "(nullptr, [](...) { "
+		return "// " + trimmed + "\nstd::shared_ptr<void> _defer" + strconv.Itoa(deferCounter) + "(nullptr, [](...) { "
 	} else {
 		// Assume a regular function call
-		return "// Function call on one line\nstd::shared_ptr<void> _defer" + strconv.Itoa(deferCounter) + "(nullptr, [](...) { " + trimmed + "; });"
+		return "// " + trimmed + "\nstd::shared_ptr<void> _defer" + strconv.Itoa(deferCounter) + "(nullptr, [](...) { " + trimmed + "; });"
 	}
 }
 
