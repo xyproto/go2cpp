@@ -845,8 +845,8 @@ func CreateStrMethod(varNames []string) string {
 }
 
 func go2cpp(source string) string {
-	flipflop := true
-
+	notInMultilineString := true
+	debugOutput := false
 	lines := []string{}
 	currentReturnType := ""
 	currentFunctionName := ""
@@ -865,6 +865,11 @@ func go2cpp(source string) string {
 	inStruct := false
 	usePrettyPrint := false
 	for _, line := range strings.Split(source, "\n") {
+
+		if debugOutput {
+			fmt.Fprintf(os.Stderr, "%s\n", line)
+		}
+
 		newLine := line
 
 		trimmedLine := stripSingleLineComment(strings.TrimSpace(line))
@@ -1046,24 +1051,23 @@ func go2cpp(source string) string {
 			newLine += "\n"
 		}
 		if (!strings.HasSuffix(newLine, ";") && !has(endings, lastchar(trimmedLine)) || strings.Contains(trimmedLine, "=")) && !strings.HasPrefix(trimmedLine, "//") && (!has(endings, lastchar(newLine)) && !strings.Contains(newLine, "//")) {
-			// TODO: flipflop means "not in multiline string". Rename it.
-			if flipflop {
+			if notInMultilineString {
 				newLine += ";"
 			}
 		}
 
 		// multiline strings
 		for strings.Contains(newLine, "`") {
-			if flipflop {
+			if notInMultilineString {
 				if strings.HasSuffix(newLine, ";") {
 					newLine = newLine[:len(newLine)-1]
 				}
 				newLine = strings.Replace(newLine, "`", "R\"(", 1)
-				flipflop = false
+				notInMultilineString = false
 			} else {
 				newLine = strings.Replace(newLine, "`", ")\"", 1)
 				newLine += ";"
-				flipflop = true
+				notInMultilineString = true
 			}
 		}
 
