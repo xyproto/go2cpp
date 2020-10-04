@@ -179,7 +179,7 @@ template <typename T> void _format_output(std::ostream& out, T x)
 // Name and type is used to keep a variable name and a variable type
 type NameAndType struct {
 	name string
-	typ string
+	typ  string
 }
 
 // FunctionArguments transforms the arguments given to a function
@@ -202,7 +202,7 @@ func FunctionArguments(source string) string {
 		//fmt.Println("NAME: " + currentName + ", TYPE: " + currentType)
 	}
 	cppSignature := ""
-	for i := len(namesAndTypes) -1; i >= 0; i-- {
+	for i := len(namesAndTypes) - 1; i >= 0; i-- {
 		//fmt.Println(namesAndTypes[i])
 		cppSignature += namesAndTypes[i].typ + " " + namesAndTypes[i].name
 		if i > 0 {
@@ -484,6 +484,8 @@ func AddIncludes(source string) (output string) {
 		"std::experimental::is_detected_v": "experimental/type_traits",
 		"std::shared_ptr":                  "memory",
 		"std::nullopt":                     "optional",
+		"EXIT_SUCCESS":                     "cstdlib",
+		"EXIT_FAILURE":                     "cstdlib",
 		// TODO: complex64, complex128
 	}
 	includeString := ""
@@ -1054,6 +1056,7 @@ func go2cpp(source string) string {
 		if currentFunctionName == "main" && trimmedLine == "}" && curlyCount == 0 { // curlyCount has already been decreased for this line
 			newLine = strings.Replace(trimmedLine, "}", "return 0;\n}", 1)
 		}
+
 		if strings.HasSuffix(trimmedLine, "}") {
 			// If the struct is being closed, add a semicolon
 			if inStruct {
