@@ -17,7 +17,7 @@ var testPrograms = []string{
 	"multiline_string",
 	"defer",
 	"iota",
-	//"map_struct",
+	"map_struct",
 	"for_range_map_key_value",
 	"for_range_map_value",
 	"for_range_map_key",

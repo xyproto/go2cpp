@@ -185,7 +185,6 @@ type NameAndType struct {
 // FunctionArguments transforms the arguments given to a function
 func FunctionArguments(source string) string {
 	namesAndTypes := make([]NameAndType, 0)
-	//fmt.Println(source)
 	// First find all names and all types
 	currentType := ""
 	currentName := ""
@@ -210,8 +209,7 @@ func FunctionArguments(source string) string {
 			cppSignature += ", "
 		}
 	}
-	//panic(cppSignature)
-	return cppSignature
+	return strings.TrimSpace(cppSignature)
 }
 
 // FunctionRetvals transforms the return values from a function
@@ -1180,7 +1178,7 @@ func main() {
 	defer os.Remove(tempFileName)
 
 	// Compile the string in cppSource
-	cmd2 := exec.Command("g++", "-x", "c++", "-std=c++2a", "-O2", "-pipe", "-fPIC", "-Wfatal-errors", "-s", "-o", tempFileName, "-")
+	cmd2 := exec.Command("g++", "-x", "c++", "-std=c++2a", "-O2", "-pipe", "-fPIC", "-Wfatal-errors", "-fpermissive", "-s", "-o", tempFileName, "-")
 	cmd2.Stdin = strings.NewReader(cppSource)
 	var compiled bytes.Buffer
 	var errors bytes.Buffer
