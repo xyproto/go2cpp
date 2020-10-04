@@ -815,6 +815,8 @@ func HashElements(source, keyType string, keyForBoth bool) string {
 			first = false
 		}
 		pairElements := strings.SplitN(pair, ": ", 2)
+		//fmt.Println("HASH ELEMENTS", source)
+		//fmt.Println("HASH ELEMENTS", pairs)
 		if len(pairElements) != 2 {
 			panic("This should be two elements, separated by a colon and a space: " + pair)
 		}
@@ -844,15 +846,6 @@ func CreateStrMethod(varNames []string) string {
 
 func go2cpp(source string) string {
 	flipflop := true
-	for strings.Contains(source, "`") {
-		if flipflop {
-			source = strings.Replace(source, "`", "R\"(", 1)
-			flipflop = false
-		} else {
-			source = strings.Replace(source, "`", ")\"", 1)
-			flipflop = true
-		}
-	}
 
 	lines := []string{}
 	currentReturnType := ""
@@ -873,7 +866,9 @@ func go2cpp(source string) string {
 	usePrettyPrint := false
 	for _, line := range strings.Split(source, "\n") {
 		newLine := line
+
 		trimmedLine := stripSingleLineComment(strings.TrimSpace(line))
+
 		// TODO: A multiline string could have lines starting with //, make sure to support this
 		if strings.HasPrefix(trimmedLine, "//") {
 			lines = append(lines, trimmedLine)
@@ -1051,8 +1046,27 @@ func go2cpp(source string) string {
 			newLine += "\n"
 		}
 		if (!strings.HasSuffix(newLine, ";") && !has(endings, lastchar(trimmedLine)) || strings.Contains(trimmedLine, "=")) && !strings.HasPrefix(trimmedLine, "//") && (!has(endings, lastchar(newLine)) && !strings.Contains(newLine, "//")) {
-			newLine += ";"
+			// TODO: flipflop means "not in multiline string". Rename it.
+			if flipflop {
+				newLine += ";"
+			}
 		}
+
+		// multiline strings
+		for strings.Contains(newLine, "`") {
+			if flipflop {
+				if strings.HasSuffix(newLine, ";") {
+					newLine = newLine[:len(newLine)-1]
+				}
+				newLine = strings.Replace(newLine, "`", "R\"(", 1)
+				flipflop = false
+			} else {
+				newLine = strings.Replace(newLine, "`", ")\"", 1)
+				newLine += ";"
+				flipflop = true
+			}
+		}
+
 		lines = append(lines, newLine)
 	}
 	output := strings.Join(lines, "\n")
@@ -1060,6 +1074,8 @@ func go2cpp(source string) string {
 	// The order matters
 	output = LiteralStrings(output)
 	output = WholeProgramReplace(output)
+
+	// The order matters
 	output = AddFunctions(output, usePrettyPrint, len(encounteredStructNames) > 0)
 	output = AddIncludes(output)
 
