@@ -74,6 +74,11 @@ func leftBetween(s, a, b string) string {
 	return between(s, a, b, false, false)
 }
 
+// like leftBetween, but use the rightmost instance of b
+func leftBetweenRightmost(s, a, b string) string {
+	return between(s, a, b, false, true)
+}
+
 // greedyBetween searches from the left for a then
 // searches as far as possible for b, before returning
 // the string that is between a and b.
@@ -126,9 +131,8 @@ func WholeProgramReplace(source string) (output string) {
 func AddFunctions(source string, useFormatOutput, haveStructs bool) (output string) {
 	output = source
 	replacements := map[string]string{
-		"strings.Contains":  `inline auto stringsContains(std::string const& a, std::string const& b) -> bool { return a.find(b) != std::string::npos; }`,
-		"strings.HasPrefix": `inline auto stringsHasPrefix(std::string const& givenString, std::string const& prefix) -> auto { return 0 == givenString.find(prefix); }`,
-
+		"strings.Contains":  `inline auto stringsContains(std::string const& haystack, std::string const& needle) -> bool { return haystack.find(needle) != std::string::npos; }`,
+		"strings.HasPrefix": `inline auto stringsHasPrefix(std::string const& haystack, std::string const& prefix) -> auto { return 0 == haystack.find(prefix); }`,
 		"_format_output": `template<typename T>
 using _str_t = decltype( std::declval<T&>()._str() );
 
@@ -172,31 +176,42 @@ template <typename T> void _format_output(std::ostream& out, T x)
 	return output
 }
 
+// Name and type is used to keep a variable name and a variable type
+type NameAndType struct {
+	name string
+	typ string
+}
+
 // FunctionArguments transforms the arguments given to a function
 func FunctionArguments(source string) string {
-	output := source
-	if strings.Contains(output, ",") {
-		currentName := ""
-		currentType := ""
-		args := strings.Split(output, ",")
-		for i := len(args) - 1; i >= 0; i-- {
-			strippedArg := strings.TrimSpace(args[i])
-			//fmt.Println(i, strippedArg)
-			if strings.Contains(strippedArg, " ") {
-				elems := strings.SplitN(strippedArg, " ", 2)
-				currentName = elems[0]
-				currentType = elems[1]
-			} else {
-				currentName = strippedArg
-			}
-			newArgs := " " + currentType + " " + currentName
-			output = strings.Replace(output, args[i], newArgs, -1)
+	namesAndTypes := make([]NameAndType, 0)
+	//fmt.Println(source)
+	// First find all names and all types
+	currentType := ""
+	currentName := ""
+	splitted := strings.Split(source, ",")
+	for i := len(splitted) - 1; i >= 0; i-- {
+		nameAndMaybeType := strings.TrimSpace(splitted[i])
+		if strings.Contains(nameAndMaybeType, " ") {
+			nameAndType := strings.Split(nameAndMaybeType, " ")
+			currentType = TypeReplace(strings.Join(nameAndType[1:], " "))
+			currentName = nameAndType[0]
+		} else {
+			currentName = nameAndMaybeType
 		}
-	} else if strings.Contains(output, " ") {
-		words := strings.Split(output, " ")
-		output = strings.TrimSpace(words[1]) + " " + strings.TrimSpace(words[0])
+		namesAndTypes = append(namesAndTypes, NameAndType{currentName, currentType})
+		//fmt.Println("NAME: " + currentName + ", TYPE: " + currentType)
 	}
-	return strings.TrimSpace(output)
+	cppSignature := ""
+	for i := len(namesAndTypes) -1; i >= 0; i-- {
+		fmt.Println(namesAndTypes[i])
+		cppSignature += namesAndTypes[i].typ + " " + namesAndTypes[i].name
+		if i > 0 {
+			cppSignature += ", "
+		}
+	}
+	//panic(cppSignature)
+	return cppSignature
 }
 
 // FunctionRetvals transforms the return values from a function
@@ -223,7 +238,8 @@ func CPPTypes(args string) string {
 	var atypes []string
 	for _, word := range words {
 		elems := strings.Split(strings.TrimSpace(word), " ")
-		atypes = append(atypes, elems[0])
+		t := TypeReplace(elems[0])
+		atypes = append(atypes, t)
 	}
 	return strings.Join(atypes, ", ")
 }
@@ -519,13 +535,13 @@ func DeferCall(source string) string {
 
 func IfSentence(source string) (output string) {
 	output = source
-	expression := strings.TrimSpace(leftBetween(source, "if", "{"))
+	expression := strings.TrimSpace(leftBetweenRightmost(source, "if", "{"))
 	return "if (" + expression + ") {"
 }
 
 func ElseIfSentence(source string) (output string) {
 	output = source
-	expression := strings.TrimSpace(leftBetween(source, "} else if", "{"))
+	expression := strings.TrimSpace(leftBetweenRightmost(source, "} else if", "{"))
 	return "} else if (" + expression + ") {"
 }
 
@@ -845,7 +861,7 @@ func CreateStrMethod(varNames []string) string {
 }
 
 func go2cpp(source string) string {
-	notInMultilineString := true
+	inMultilineString := false
 	debugOutput := false
 	lines := []string{}
 	currentReturnType := ""
@@ -921,7 +937,7 @@ func go2cpp(source string) string {
 			}
 		} else if inConst {
 			newLine = ConstDeclaration(line)
-		} else if inHashMap {
+		} else if inHashMap && !inMultilineString {
 			newLine = HashElements(trimmedLine, hashKeyType, false)
 		} else if strings.HasPrefix(trimmedLine, "func") {
 			newLine, currentReturnType, currentFunctionName = FunctionSignature(trimmedLine)
@@ -1051,23 +1067,23 @@ func go2cpp(source string) string {
 			newLine += "\n"
 		}
 		if (!strings.HasSuffix(newLine, ";") && !has(endings, lastchar(trimmedLine)) || strings.Contains(trimmedLine, "=")) && !strings.HasPrefix(trimmedLine, "//") && (!has(endings, lastchar(newLine)) && !strings.Contains(newLine, "//")) {
-			if notInMultilineString {
+			if !inMultilineString {
 				newLine += ";"
 			}
 		}
 
 		// multiline strings
 		for strings.Contains(newLine, "`") {
-			if notInMultilineString {
+			if !inMultilineString {
 				if strings.HasSuffix(newLine, ";") {
 					newLine = newLine[:len(newLine)-1]
 				}
 				newLine = strings.Replace(newLine, "`", "R\"(", 1)
-				notInMultilineString = false
+				inMultilineString = true
 			} else {
 				newLine = strings.Replace(newLine, "`", ")\"", 1)
 				newLine += ";"
-				notInMultilineString = true
+				inMultilineString = false
 			}
 		}
 
