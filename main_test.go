@@ -14,6 +14,7 @@ const testcaseDirectory = "testcases/"
 
 var testPrograms = []string{
 	//"multiline_map",
+	"string_args",
 	"multiline_string",
 	"defer",
 	"iota",
