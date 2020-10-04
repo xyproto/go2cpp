@@ -780,11 +780,6 @@ func ConstDeclaration(source string) (output string) {
 			return "const auto " + words[1] + " = " + right
 		}
 		return "const " + TypeReplace(words[1]) + " " + words[0] + " = " + right
-	} else if len(words) >= 3 { // might be "const unsigned int"
-		if words[0] == "const" {
-			return "const auto " + words[len(words)-1] + " = " + right
-		}
-		return "const " + TypeReplace(words[1] + " " + words[2]) + " " + words[len(words)-1] + " = " + right
 	}
 	// Unrecognized
 	panic("go2cpp: unrecognized const expression: " + source)
