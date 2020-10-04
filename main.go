@@ -203,7 +203,7 @@ func FunctionArguments(source string) string {
 	}
 	cppSignature := ""
 	for i := len(namesAndTypes) -1; i >= 0; i-- {
-		fmt.Println(namesAndTypes[i])
+		//fmt.Println(namesAndTypes[i])
 		cppSignature += namesAndTypes[i].typ + " " + namesAndTypes[i].name
 		if i > 0 {
 			cppSignature += ", "
