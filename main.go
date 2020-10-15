@@ -16,6 +16,8 @@ import (
 	"strings"
 )
 
+const cpp20noStdFormatYet = true
+
 const versionString = "xyproto/go2cpp 0.3.0"
 
 const tupleType = "std::tuple"
@@ -27,6 +29,43 @@ const (
 	labelPrefix   = "_l__"
 	deferPrefix   = "_d__"
 )
+
+var includeMap = map[string]string{
+	"std::tuple":                       "tuple",
+	"std::endl":                        "iostream",
+	"std::cout":                        "iostream",
+	"std::string":                      "string",
+	"std::size":                        "iterator",
+	"std::unordered_map":               "unordered_map",
+	"std::hash":                        "functional",
+	"std::size_t":                      "cstddef",
+	"std::int8_t":                      "cinttypes",
+	"std::int16_t":                     "cinttypes",
+	"std::int32_t":                     "cinttypes",
+	"std::int64_t":                     "cinttypes",
+	"std::uint8_t":                     "cinttypes",
+	"std::uint16_t":                    "cinttypes",
+	"std::uint32_t":                    "cinttypes",
+	"std::uint64_t":                    "cinttypes",
+	"printf":                           "cstdio",
+	"fprintf":                          "cstdio",
+	"sprintf":                          "cstdio",
+	"snprintf":                         "cstdio",
+	"std::stringstream":                "sstream",
+	"std::is_pointer":                  "type_traits",
+	"std::experimental::is_detected_v": "experimental/type_traits",
+	"std::shared_ptr":                  "memory",
+	"std::nullopt":                     "optional",
+	"EXIT_SUCCESS":                     "cstdlib",
+	"EXIT_FAILURE":                     "cstdlib",
+	"std::vector":                      "vector",
+	"std::format":                      "format",
+	"std::unique_ptr":                  "memory",
+	"std::runtime_error":               "stdexcept",
+	"std::regex_replace":              "regex",
+	"std::regex_constants":              "regex",
+	// TODO: complex64, complex128
+}
 
 var endings = []string{"{", ",", "}", ":"}
 
@@ -119,10 +158,8 @@ func LiteralStrings(source string) string {
 func WholeProgramReplace(source string) (output string) {
 	output = source
 	replacements := map[string]string{
-		" string ": " std::string ",
-		"(string ": "(std::string ",
-		"fmt.Printf(": "printf(",
-		"fmt.Sprintf(": "std::format(",
+		" string ":    " std::string ",
+		"(string ":    "(std::string ",
 	}
 	for k, v := range replacements {
 		output = strings.Replace(output, k, v, -1)
@@ -131,6 +168,9 @@ func WholeProgramReplace(source string) (output string) {
 }
 
 func AddFunctions(source string, useFormatOutput, haveStructs bool) (output string) {
+
+	// TODO: Make the fmtSprintf implementation more watertight. Use variadic templates and parameter packs, while waiting for std::format to arrive in the C++20 implementations.
+
 	output = source
 	replacements := map[string]string{
 		"strings.Contains":  `inline auto stringsContains(std::string const& haystack, std::string const& needle) -> bool { return haystack.find(needle) != std::string::npos; }`,
@@ -156,6 +196,53 @@ template <typename T> void _format_output(std::ostream& out, T x)
     }
 }`,
 		"strings.TrimSpace": `inline auto stringsTrimSpace(std::string const& s) -> std::string { std::string news {}; for (auto l : s) { if (l != ' ' && l != '\n' && l != '\t' && l != '\v' && l != '\f' && l != '\r') { news += l; } } return news; }`,
+		"fmt.Sprintf": `
+template <typename T>
+std::string fmtSprintf(const std::string& fmt, T arg1)
+{
+    std::string tmp = fmt;
+    tmp = std::regex_replace(tmp, std::regex("%(s|v|d|f)"), std::to_string(arg1), std::regex_constants::format_first_only);
+    return tmp;
+}
+template <typename T>
+std::string fmtSprintf(const std::string& fmt, T arg1, T arg2)
+{
+    std::string tmp = fmt;
+    tmp = std::regex_replace(tmp, std::regex("%(s|v|d|f)"), std::to_string(arg1), std::regex_constants::format_first_only);
+    tmp = std::regex_replace(tmp, std::regex("%(s|v|d|f)"), std::to_string(arg2), std::regex_constants::format_first_only);
+    return tmp;
+}
+template <typename T>
+std::string fmtSprintf(const std::string& fmt, T arg1, T arg2, T arg3)
+{
+    std::string tmp = fmt;
+    tmp = std::regex_replace(tmp, std::regex("%(s|v|d|f)"), std::to_string(arg1), std::regex_constants::format_first_only);
+    tmp = std::regex_replace(tmp, std::regex("%(s|v|d|f)"), std::to_string(arg2), std::regex_constants::format_first_only);
+    tmp = std::regex_replace(tmp, std::regex("%(s|v|d|f)"), std::to_string(arg3), std::regex_constants::format_first_only);
+    return tmp;
+}
+template <typename T>
+std::string fmtSprintf(const std::string& fmt, T arg1, T arg2, T arg3, T arg4)
+{
+    std::string tmp = fmt;
+    tmp = std::regex_replace(tmp, std::regex("%(s|v|d|f)"), std::to_string(arg1), std::regex_constants::format_first_only);
+    tmp = std::regex_replace(tmp, std::regex("%(s|v|d|f)"), std::to_string(arg2), std::regex_constants::format_first_only);
+    tmp = std::regex_replace(tmp, std::regex("%(s|v|d|f)"), std::to_string(arg3), std::regex_constants::format_first_only);
+    tmp = std::regex_replace(tmp, std::regex("%(s|v|d|f)"), std::to_string(arg4), std::regex_constants::format_first_only);
+    return tmp;
+}
+template <typename T>
+std::string fmtSprintf(const std::string& fmt, T arg1, T arg2, T arg3, T arg4, T arg5)
+{
+    std::string tmp = fmt;
+    tmp = std::regex_replace(tmp, std::regex("%(s|v|d|f)"), std::to_string(arg1), std::regex_constants::format_first_only);
+    tmp = std::regex_replace(tmp, std::regex("%(s|v|d|f)"), std::to_string(arg2), std::regex_constants::format_first_only);
+    tmp = std::regex_replace(tmp, std::regex("%(s|v|d|f)"), std::to_string(arg3), std::regex_constants::format_first_only);
+    tmp = std::regex_replace(tmp, std::regex("%(s|v|d|f)"), std::to_string(arg4), std::regex_constants::format_first_only);
+    tmp = std::regex_replace(tmp, std::regex("%(s|v|d|f)"), std::to_string(arg5), std::regex_constants::format_first_only);
+    return tmp;
+}
+`,
 	}
 	if useFormatOutput && !haveStructs {
 		replacements["_format_output"] = `template <typename T> void _format_output(std::ostream& out, T x)
@@ -375,7 +462,9 @@ func PrintStatement(source string) (string, bool) {
 		output = strings.Replace(output, "fmt.Fprintf", "fprintf", 1)
 		output = strings.Replace(output, "fmt.Sprintf", "sprintf", 1)
 		if strings.Contains(output, "%v") {
-			panic("support for %v is not implemented yet")
+			// TODO: Upgrade this in the future
+			output = strings.Replace(output, "%v", "%s", -1)
+			//panic("support for %v is not implemented yet")
 		}
 		return output, mayNeedPrettyPrint
 	}
@@ -460,40 +549,9 @@ func PrintStatement(source string) (string, bool) {
 
 func AddIncludes(source string) (output string) {
 	output = source
-	includes := map[string]string{
-		"std::tuple":                       "tuple",
-		"std::endl":                        "iostream",
-		"std::cout":                        "iostream",
-		"std::string":                      "string",
-		"std::size":                        "iterator",
-		"std::unordered_map":               "unordered_map",
-		"std::hash":                        "functional",
-		"std::size_t":                      "cstddef",
-		"std::int8_t":                      "cinttypes",
-		"std::int16_t":                     "cinttypes",
-		"std::int32_t":                     "cinttypes",
-		"std::int64_t":                     "cinttypes",
-		"std::uint8_t":                     "cinttypes",
-		"std::uint16_t":                    "cinttypes",
-		"std::uint32_t":                    "cinttypes",
-		"std::uint64_t":                    "cinttypes",
-		"printf":                           "cstdio",
-		"fprintf":                          "cstdio",
-		"sprintf":                          "cstdio",
-		"snprintf":                         "cstdio",
-		"std::stringstream":                "sstream",
-		"std::is_pointer":                  "type_traits",
-		"std::experimental::is_detected_v": "experimental/type_traits",
-		"std::shared_ptr":                  "memory",
-		"std::nullopt":                     "optional",
-		"EXIT_SUCCESS":                     "cstdlib",
-		"EXIT_FAILURE":                     "cstdlib",
-		"std::vector":                      "vector",
-		"std::format":                      "format",
-		// TODO: complex64, complex128
-	}
+
 	includeString := ""
-	for k, v := range includes {
+	for k, v := range includeMap {
 		if strings.Contains(output, k) {
 			newInclude := "#include <" + v + ">\n"
 			if !strings.Contains(includeString, newInclude) {
@@ -1082,7 +1140,7 @@ func go2cpp(source string) string {
 				usePrettyPrint = true
 			}
 		} else if strings.Contains(trimmedLine, "=") && !strings.HasPrefix(trimmedLine, "var ") && !strings.HasPrefix(trimmedLine, "if ") && !strings.HasPrefix(trimmedLine, "const ") && !strings.HasPrefix(trimmedLine, "type ") {
-			elem := strings.Split(trimmedLine, "=")
+			elem := strings.SplitN(trimmedLine, "=", 2)
 			left := strings.TrimSpace(elem[0])
 			declarationAssignment := false
 			if strings.HasSuffix(left, ":") {
@@ -1176,6 +1234,14 @@ func go2cpp(source string) string {
 				switchLabel = ""
 			}
 		}
+
+		if !cpp20noStdFormatYet {
+			// Special case for fmt.Sprintf -> std::format
+			if strings.Contains(newLine, "fmt.Sprintf(") && strings.Contains(newLine, "%v") {
+				newLine = strings.Replace(strings.Replace(newLine, "%v", "{}", -1), "fmt.Sprintf(", "std::format(", -1)
+			}
+		}
+
 		if currentFunctionName == "main" && trimmedLine == "}" && curlyCount == 0 { // curlyCount has already been decreased for this line
 			newLine = strings.Replace(trimmedLine, "}", "return 0;\n}", 1)
 		}

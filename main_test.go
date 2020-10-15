@@ -13,7 +13,7 @@ import (
 const testcaseDirectory = "testcases/"
 
 var testPrograms = []string{
-	//"sprintf",
+	"sprintf",
 	//"multiline_map",
 	"multiline_string",
 	"var_string",
