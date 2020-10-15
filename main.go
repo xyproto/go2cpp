@@ -63,6 +63,7 @@ var includeMap = map[string]string{
 	"std::runtime_error":               "stdexcept",
 	"std::regex_replace":               "regex",
 	"std::regex_constants":             "regex",
+	"std::to_string":                   "string",
 	// TODO: complex64, complex128
 }
 
@@ -76,6 +77,7 @@ var (
 	iotaNumber              int // used for simple increases of iota constants
 	deferCounter            int
 	unfinishedDeferFunction bool
+	ignoreCounter           int
 )
 
 // between returns the string between two given strings, or the original string
@@ -156,9 +158,20 @@ func LiteralStrings(source string) string {
 // TODO: Avoid whole-program replacements, if possible
 func WholeProgramReplace(source string) (output string) {
 	output = source
+	// TODO: Add these in a smarter way, with more supported types
 	replacements := map[string]string{
-		" string ": " std::string ",
-		"(string ": "(std::string ",
+		" string ":         " std::string ",
+		"(string ":         "(std::string ",
+		"return string":    "return std::to_string",
+		"make([]string, ":  "std::vector<std::string> (",
+		"make([]int, ":     "std::vector<int> (",
+		"make([]float64, ": "std::vector<double> (",
+		"make([]float32, ": "std::vector<float> (",
+		"-> []string":      "-> std::vector<string>",
+		"-> []int":         "-> std::vector<int>",
+		"-> []float64":     "-> std::vector<double>",
+		"-> []float32":     "-> std::vector<float>",
+		"= nil)":           "= std::nullopt)",
 	}
 	for k, v := range replacements {
 		output = strings.Replace(output, k, v, -1)
@@ -172,6 +185,15 @@ func AddFunctions(source string, useFormatOutput, haveStructs bool) (output stri
 
 	output = source
 	replacements := map[string]string{
+		"strconv.ParseFloat": `using error = std::optional<std::string>;
+auto strconvParseFloat(std::string s, int n) -> std::tuple<double, error> {
+	try {
+		return std::tuple { std::stod(s), std::nullopt };
+	} catch (const std::invalid_argument& ia) {
+		return std::tuple { 0.0, std::optional { "invalid argument" } };
+	}
+}
+`,
 		"strings.Contains":  `inline auto stringsContains(std::string const& haystack, std::string const& needle) -> bool { return haystack.find(needle) != std::string::npos; }`,
 		"strings.HasPrefix": `inline auto stringsHasPrefix(std::string const& haystack, std::string const& prefix) -> auto { return 0 == haystack.find(prefix); }`,
 		"_format_output": `template<typename T>
@@ -241,6 +263,10 @@ std::string fmtSprintf(const std::string& fmt, T arg1, T arg2, T arg3, T arg4, T
     tmp = std::regex_replace(tmp, std::regex("%(s|v|d|f)"), std::to_string(arg5), std::regex_constants::format_first_only);
     return tmp;
 }
+`,
+		"len": `
+template <typename T>
+inline auto len(T x) -> int { return x.size(); }
 `,
 	}
 	if useFormatOutput && !haveStructs {
@@ -1159,7 +1185,45 @@ func go2cpp(source string) string {
 				right = "new " + right[1:]
 			}
 			if strings.Contains(left, ",") {
-				newLine = "auto [" + left + "] = " + right
+				if strings.Contains(left, "_") {
+					if strings.HasPrefix(left, "_,") {
+						ignoreVarName := "_" + strconv.Itoa(ignoreCounter)
+						ignoreCounter++
+						left = ignoreVarName + left[1:]
+
+					}
+					if strings.HasSuffix(left, ", _") {
+						ignoreVarName := "_" + strconv.Itoa(ignoreCounter)
+						ignoreCounter++
+						left = left[:len(left)-1] + ignoreVarName
+
+					}
+					if left == "_" {
+						ignoreVarName := "_" + strconv.Itoa(ignoreCounter)
+						ignoreCounter++
+						left = ignoreVarName
+
+					}
+					for strings.Contains(left, " _,") {
+						ignoreVarName := "_" + strconv.Itoa(ignoreCounter)
+						ignoreCounter++
+						left = strings.Replace(left, " _,", " "+ignoreVarName+",", 1)
+					}
+					// Use tie and std::ignore if the experssion contains "_"
+					/*
+						left = strings.Replace(left, " _ ", " std::ignore ", -1)
+						left = strings.Replace(left, " _,", " std::ignore,", -1)
+						if strings.HasPrefix(left, "_,") {
+							left = strings.Replace(left, "_", "std::ignore", 1)
+						}
+						newLine = "std::tie( " + left + ") = " + right
+					*/
+					//newLine = "#pragma warning(push)\n#pragma warning(disable:4101)\nauto ["
+					//newLine += left + "] = " + right + ";\n#pragma warning(pop)\n//"
+					newLine = "auto [" + left + "] = " + right
+				} else {
+					newLine = "auto [" + left + "] = " + right
+				}
 			} else if declarationAssignment {
 				if strings.HasPrefix(right, "[]") {
 					if !strings.Contains(right, "{") {
