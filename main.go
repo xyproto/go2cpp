@@ -711,8 +711,8 @@ func Case(source string) (output string) {
 	return output
 }
 
-// Return transformed line and the variable name
-func VarDeclaration(source string) (string, string) {
+// Return transformed line and the variable names
+func VarDeclarations(source string) (string, []string) {
 	if strings.Contains(source, "=") {
 		parts := strings.SplitN(strings.TrimSpace(source), "=", 2)
 		left := parts[0]
@@ -721,23 +721,76 @@ func VarDeclaration(source string) (string, string) {
 		if fields[0] == "var" {
 			fields = fields[1:]
 		}
-		if len(fields) > 2 {
-			return TypeReplace(fields[1]) + " " + fields[0] + " " + strings.Join(fields[2:], " ") + " = " + right, fields[0]
-		} else if len(fields) == 2 {
-			return TypeReplace(fields[1]) + " " + fields[0] + " = " + right, fields[0]
-		} else {
-			return "auto" + " " + fields[0] + " = " + right, fields[0]
+		if len(fields) == 2 {
+			return TypeReplace(fields[1]) + " " + fields[0] + " = " + right, []string{fields[0]}
+		} else if len(fields) > 2 {
+			if strings.Contains(source, ",") {
+				leftFields := strings.Fields(left)
+				if leftFields[0] == "var" {
+					leftFields = leftFields[1:]
+				}
+				rightFields := strings.Fields(right)
+				if len(leftFields)-1 != len(rightFields) {
+					panic("var declaration has mismatching number of variables and values: " + left + " VS " + right)
+				}
+				lastIndex := len(leftFields) - 1
+				varType := leftFields[lastIndex]
+				var sb strings.Builder
+				var varNames []string
+
+				for i, varName := range leftFields[:lastIndex] {
+					if i > 0 {
+						sb.WriteString(";")
+					}
+					if strings.HasSuffix(varName, ",") {
+						varName = varName[:len(varName)-1]
+					}
+					varValue := rightFields[i]
+					if strings.HasSuffix(varValue, ",") {
+						varValue = varValue[:len(varValue)-1]
+					}
+					sb.WriteString(TypeReplace(varType) + " " + varName + " = " + varValue)
+					varNames = append(varNames, varName)
+				}
+				return sb.String(), varNames
+			}
+			return TypeReplace(fields[1]) + " " + fields[0] + " " + strings.Join(fields[2:], " ") + " = " + right, []string{fields[0]}
 		}
+		// TODO: Support multiple variable names of one type that also has an assignment
+		return "auto " + fields[0] + " = " + right, []string{fields[0]}
 	}
 	fields := strings.Fields(source)
 	if fields[0] == "var" {
 		fields = fields[1:]
 	}
 	if len(fields) == 2 {
-		return TypeReplace(fields[1]) + " " + fields[0], fields[0]
+		return TypeReplace(fields[1]) + " " + fields[0], []string{fields[0]}
 	}
+	if strings.Contains(source, ",") {
+		// Comma separated variable names, with one common variable type,
+		// and no value assignment
+		lastIndex := len(fields) - 1
+		varType := fields[lastIndex]
+		var sb strings.Builder
+		var varNames []string
+
+		for i, varName := range fields[:lastIndex] {
+			if i > 0 {
+				sb.WriteString(";")
+			}
+			if strings.HasSuffix(varName, ",") {
+				varName = varName[:len(varName)-1]
+			}
+			sb.WriteString(TypeReplace(varType) + " " + varName)
+			varNames = append(varNames, varName)
+		}
+
+		return sb.String(), varNames
+	}
+
 	// Unrecognized
 	panic("Unrecognized var declaration: " + source)
+
 }
 
 // TypeDeclaration returns a transformed string (from Go to C++),
@@ -922,11 +975,13 @@ func go2cpp(source string) string {
 			inHashMap = false
 			newLine = trimmedLine + ";"
 		} else if inVar || (inStruct && trimmedLine != "}") {
-			name := ""
-			newLine, name = VarDeclaration(trimmedLine)
+			var varNames []string
+			newLine, varNames = VarDeclarations(trimmedLine)
 			if inStruct {
-				// Gathering variable names from this struct
-				encounteredStructNames = append(encounteredStructNames, name)
+				for _, varName := range varNames {
+					// Gathering variable names from this struct
+					encounteredStructNames = append(encounteredStructNames, varName)
+				}
 			}
 		} else if inType {
 			prevInStruct := inStruct
@@ -1034,7 +1089,7 @@ func go2cpp(source string) string {
 			continue
 		} else if strings.HasPrefix(trimmedLine, "var ") {
 			// Ignore variable name since it's not in a struct
-			newLine, _ = VarDeclaration(line)
+			newLine, _ = VarDeclarations(line)
 		} else if strings.HasPrefix(trimmedLine, "type ") {
 			newLine, inStruct = TypeDeclaration(trimmedLine)
 		} else if strings.HasPrefix(trimmedLine, "const ") {
