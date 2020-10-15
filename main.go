@@ -486,6 +486,7 @@ func AddIncludes(source string) (output string) {
 		"std::nullopt":                     "optional",
 		"EXIT_SUCCESS":                     "cstdlib",
 		"EXIT_FAILURE":                     "cstdlib",
+		"std::vector":                      "vector",
 		// TODO: complex64, complex128
 	}
 	includeString := ""
@@ -582,6 +583,10 @@ func TypeReplace(source string) string {
 	case "uint":
 		return "unsigned int"
 	default:
+		if strings.HasPrefix(trimmed, "[]") {
+			innerType := trimmed[2:len(trimmed)]
+			return "std::vector<" + TypeReplace(innerType) + ">"
+		}
 		return trimmed
 	}
 }
@@ -756,8 +761,36 @@ func VarDeclarations(source string) (string, []string) {
 			}
 			return TypeReplace(fields[1]) + " " + fields[0] + " " + strings.Join(fields[2:], " ") + " = " + right, []string{fields[0]}
 		}
+		leftFields := strings.Fields(left)
+		if leftFields[0] == "var" {
+			leftFields = leftFields[1:]
+		}
+		if len(leftFields) > 1 {
+			panic("unsupported var declaration: " + source)
+		}
+		varName := leftFields[0]
+		varType := right
+		withBracket := false
+		if strings.HasSuffix(right, "{") {
+			varType = right[:len(right)-1]
+			withBracket = true
+		}
+		//fmt.Println("source:", source)
+		//fmt.Println("varType:", varType)
+		//fmt.Println("varName:", varName)
+		//fmt.Println("withBracket:", withBracket)
+
+		s := TypeReplace(varType) + " " + varName + " = ";
+		if withBracket {
+			s += "{"
+		} else {
+			s += ";"
+		}
+		//panic(s)
+		return s, []string{varName}
+
 		// TODO: Support multiple variable names of one type that also has an assignment
-		return "auto " + fields[0] + " = " + right, []string{fields[0]}
+		//return "auto " + fields[0] + " = " + right, []string{fields[0]}
 	}
 	fields := strings.Fields(source)
 	if fields[0] == "var" {
@@ -933,6 +966,7 @@ func go2cpp(source string) string {
 	encounteredStructNames := []string{}
 	inStruct := false
 	usePrettyPrint := false
+	closingBracketNeedsASemicolon := false
 	for _, line := range strings.Split(source, "\n") {
 
 		if debugOutput {
@@ -977,6 +1011,10 @@ func go2cpp(source string) string {
 		} else if inVar || (inStruct && trimmedLine != "}") {
 			var varNames []string
 			newLine, varNames = VarDeclarations(trimmedLine)
+			if strings.HasSuffix(newLine, "{") {
+				closingBracketNeedsASemicolon = true
+			}
+
 			if inStruct {
 				for _, varName := range varNames {
 					// Gathering variable names from this struct
@@ -1090,6 +1128,9 @@ func go2cpp(source string) string {
 		} else if strings.HasPrefix(trimmedLine, "var ") {
 			// Ignore variable name since it's not in a struct
 			newLine, _ = VarDeclarations(line)
+			if strings.HasSuffix(newLine, "{") {
+				closingBracketNeedsASemicolon = true
+			}
 		} else if strings.HasPrefix(trimmedLine, "type ") {
 			newLine, inStruct = TypeDeclaration(trimmedLine)
 		} else if strings.HasPrefix(trimmedLine, "const ") {
@@ -1119,6 +1160,9 @@ func go2cpp(source string) string {
 				newLine = CreateStrMethod(encounteredStructNames) + newLine + ";"
 
 				inStruct = false
+			} else if closingBracketNeedsASemicolon {
+				newLine += ";"
+				closingBracketNeedsASemicolon = false
 			}
 			newLine += "\n"
 		}
