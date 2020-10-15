@@ -121,6 +121,8 @@ func WholeProgramReplace(source string) (output string) {
 	replacements := map[string]string{
 		" string ": " std::string ",
 		"(string ": "(std::string ",
+		"fmt.Printf(": "printf(",
+		"fmt.Sprintf(": "std::format(",
 	}
 	for k, v := range replacements {
 		output = strings.Replace(output, k, v, -1)
@@ -487,6 +489,7 @@ func AddIncludes(source string) (output string) {
 		"EXIT_SUCCESS":                     "cstdlib",
 		"EXIT_FAILURE":                     "cstdlib",
 		"std::vector":                      "vector",
+		"std::format":                      "format",
 		// TODO: complex64, complex128
 	}
 	includeString := ""
