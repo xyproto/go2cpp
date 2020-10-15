@@ -13,7 +13,6 @@ import (
 const testcaseDirectory = "testcases/"
 
 var testPrograms = []string{
-	"sprintf",
 	//"multiline_map",
 	"multiline_string",
 	"var_string",
@@ -50,6 +49,7 @@ var testPrograms = []string{
 	"goto",
 	"switch",
 	"hello",
+	"sprintf",
 }
 
 // Programs with unordered words as the output
