@@ -16,7 +16,7 @@ import (
 	"strings"
 )
 
-const cpp20noStdFormatYet = true
+const cppHasStdFormat = false
 
 const versionString = "xyproto/go2cpp 0.3.0"
 
@@ -59,11 +59,10 @@ var includeMap = map[string]string{
 	"EXIT_SUCCESS":                     "cstdlib",
 	"EXIT_FAILURE":                     "cstdlib",
 	"std::vector":                      "vector",
-	"std::format":                      "format",
 	"std::unique_ptr":                  "memory",
 	"std::runtime_error":               "stdexcept",
-	"std::regex_replace":              "regex",
-	"std::regex_constants":              "regex",
+	"std::regex_replace":               "regex",
+	"std::regex_constants":             "regex",
 	// TODO: complex64, complex128
 }
 
@@ -158,8 +157,8 @@ func LiteralStrings(source string) string {
 func WholeProgramReplace(source string) (output string) {
 	output = source
 	replacements := map[string]string{
-		" string ":    " std::string ",
-		"(string ":    "(std::string ",
+		" string ": " std::string ",
+		"(string ": "(std::string ",
 	}
 	for k, v := range replacements {
 		output = strings.Replace(output, k, v, -1)
@@ -557,6 +556,18 @@ func AddIncludes(source string) (output string) {
 			if !strings.Contains(includeString, newInclude) {
 				includeString += newInclude
 			}
+
+		}
+	}
+	if cppHasStdFormat {
+		//"std::format":                      "format",
+		k := "std::format"
+		v := "format"
+		if strings.Contains(output, k) {
+			newInclude := "#include <" + v + ">\n"
+			if !strings.Contains(includeString, newInclude) {
+				includeString += newInclude
+			}
 		}
 	}
 	return includeString + "\n" + output
@@ -645,7 +656,7 @@ func TypeReplace(source string) string {
 		return "unsigned int"
 	default:
 		if strings.HasPrefix(trimmed, "[]") {
-			innerType := trimmed[2:len(trimmed)]
+			innerType := trimmed[2:]
 			return "std::vector<" + TypeReplace(innerType) + ">"
 		}
 		return trimmed
@@ -841,7 +852,7 @@ func VarDeclarations(source string) (string, []string) {
 			lastIndex := len(leftFields) - 1
 			if len(leftFields) > 1 && !strings.Contains(leftFields[lastIndex], ",") {
 				varType = leftFields[lastIndex]
-				leftFields = leftFields[:lastIndex-1]
+				//leftFields = leftFields[:lastIndex-1]
 			}
 			varValue = right
 		}
@@ -852,9 +863,7 @@ func VarDeclarations(source string) (string, []string) {
 			withBracket = true
 		}
 
-		if strings.HasPrefix(varValue, varType) {
-			varValue = varValue[len(varType):]
-		}
+		varValue = strings.TrimPrefix(varValue, varType)
 
 		/*
 			fmt.Println("source:", source)
@@ -1101,10 +1110,8 @@ func go2cpp(source string) string {
 			}
 
 			if inStruct {
-				for _, varName := range varNames {
-					// Gathering variable names from this struct
-					encounteredStructNames = append(encounteredStructNames, varName)
-				}
+				// Gathering variable names from this struct
+				encounteredStructNames = append(encounteredStructNames, varNames...)
 			}
 		} else if inType {
 			prevInStruct := inStruct
@@ -1235,7 +1242,7 @@ func go2cpp(source string) string {
 			}
 		}
 
-		if !cpp20noStdFormatYet {
+		if cppHasStdFormat {
 			// Special case for fmt.Sprintf -> std::format
 			if strings.Contains(newLine, "fmt.Sprintf(") && strings.Contains(newLine, "%v") {
 				newLine = strings.Replace(strings.Replace(newLine, "%v", "{}", -1), "fmt.Sprintf(", "std::format(", -1)
@@ -1275,7 +1282,9 @@ func go2cpp(source string) string {
 				inMultilineString = true
 			} else {
 				newLine = strings.Replace(newLine, "`", ")\"", 1)
+				//if !strings.HasSuffix(newLine, ",") {
 				newLine += ";"
+				//}
 				inMultilineString = false
 			}
 		}
