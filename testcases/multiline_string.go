@@ -15,6 +15,7 @@ c
 `
 
 const s3 = `abc`
+
 var s4 = `abc`
 
 func main() {
