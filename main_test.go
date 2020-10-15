@@ -13,7 +13,7 @@ import (
 const testcaseDirectory = "testcases/"
 
 var testPrograms = []string{
-	//"multiline_string",
+	"multiline_string",
 	//"multiline_map",
 	"var_string",
 	"var_multi",

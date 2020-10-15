@@ -718,6 +718,9 @@ func Case(source string) (output string) {
 
 // Return transformed line and the variable names
 func VarDeclarations(source string) (string, []string) {
+
+	// TODO: This is an ugly function. Refactor.
+
 	if strings.Contains(source, "=") {
 		parts := strings.SplitN(strings.TrimSpace(source), "=", 2)
 		left := parts[0]
@@ -768,29 +771,50 @@ func VarDeclarations(source string) (string, []string) {
 		if len(leftFields) > 1 {
 			panic("unsupported var declaration: " + source)
 		}
+
 		varName := leftFields[0]
 		varType := right
+		varValue := ""
+		if strings.Contains(source, "=") {
+			varType = "auto"
+			lastIndex := len(leftFields) - 1
+			if len(leftFields) > 1 && !strings.Contains(leftFields[lastIndex], ",") {
+				varType = leftFields[lastIndex]
+				leftFields = leftFields[:lastIndex-1]
+			}
+			varValue = right
+		}
+
 		withBracket := false
 		if strings.HasSuffix(right, "{") {
-			varType = right[:len(right)-1]
+			varType = strings.TrimSpace(right[:len(right)-1])
 			withBracket = true
 		}
-		//fmt.Println("source:", source)
-		//fmt.Println("varType:", varType)
-		//fmt.Println("varName:", varName)
-		//fmt.Println("withBracket:", withBracket)
 
-		s := TypeReplace(varType) + " " + varName + " = ";
-		if withBracket {
-			s += "{"
-		} else {
-			s += ";"
+		if strings.HasPrefix(varValue, varType) {
+			varValue = varValue[len(varType):]
 		}
-		//panic(s)
-		return s, []string{varName}
 
-		// TODO: Support multiple variable names of one type that also has an assignment
-		//return "auto " + fields[0] + " = " + right, []string{fields[0]}
+		/*
+			fmt.Println("source:", source)
+			fmt.Println("varType:", varType)
+			fmt.Println("varName:", varName)
+			fmt.Println("varValue:", varValue)
+			fmt.Println("withBracket:", withBracket)
+		*/
+
+		s := TypeReplace(varType) + " " + varName + " = " + varValue
+		if withBracket {
+			if !strings.HasSuffix(s, "{") {
+				s += "{"
+			}
+		} else {
+			if !strings.Contains(source, "`") {
+				// Only add a semicolon if it's not a multiline string and not an opening bracket
+				s += ";"
+			}
+		}
+		return s, []string{varName}
 	}
 	fields := strings.Fields(source)
 	if fields[0] == "var" {
