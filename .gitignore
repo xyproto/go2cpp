@@ -1,2 +1,3 @@
 go2cpp
 *.o
+output.cpp
