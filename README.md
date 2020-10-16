@@ -1,5 +1,7 @@
 # go2cpp
 
+[![Build Status](https://travis-ci.com/xyproto/go2cpp.svg?branch=master)](https://travis-ci.com/xyproto/go2cpp)
+
 Compiles Go to native executables via C++20.
 
 One of the goals is for the compiler to be able to compile itself.
