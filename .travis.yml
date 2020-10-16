@@ -1,11 +1,67 @@
-dist: focal
-language: go cpp
+language: cpp go
 
-go:
-  - "1.10"
-  - "1.11"
-  - "1.12"
-  - "1.13"
-  - "1.14"
-  - "1.15"
-  - tip
+os:
+  - linux
+  - osx
+    #  - freebsd
+
+services:
+  - docker
+
+compiler:
+  - gcc
+
+matrix:
+  include:
+    - os: linux
+      dist: bionic
+    - os: osx
+      dist: xcode11
+
+addons:
+  apt:
+    sources:
+    - sourceline: 'deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-9 main'
+      key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
+    - sourceline: 'ppa:ubuntu-toolchain-r/test'
+    packages:
+    - cmake
+    - gcc-9
+    - g++-9
+    - scons
+    - ninja-build
+    - libgoogle-perftools-dev
+    - libkyotocabinet-dev
+  homebrew:
+    packages:
+    - cmake
+    - crc32c
+    - gcc@9
+    - scons
+    - gperftools
+    - kyoto-cabinet
+    - llvm@9
+    - ninja
+    update: true
+  freebsd:
+    pacakges:
+    - gmake
+    - cmake
+    - ninja
+    - gcc9
+    - gcc9-devel
+    - pkgconf
+    - python3
+    - scons
+
+before_script:
+  - which gmake && export MAKE=gmake || export MAKE=make
+  - which gcc9 && export CC=gcc9 || true
+  - which g++9 && export CXX=g++9 || true
+  - which gcc-9 && export CC=gcc-9 || true
+  - which g++-9 && export CXX=g++-9 || true
+  - export MACOSX_DEPLOYMENT_TARGET=10.14
+
+# build and install cxx, test basic functionality then test for C++20 specific features
+script:
+  - go build && go test
