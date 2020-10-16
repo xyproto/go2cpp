@@ -1287,7 +1287,7 @@ func go2cpp(source string) string {
 			newLine = DeferCall(line)
 		} else if strings.HasPrefix(trimmedLine, "if ") {
 			newLine = IfSentence(line)
-			// TODO: Short variable names has the potential to ruin if experssions this way, do a smarter replacement
+			// TODO: Short variable names has the potential to ruin if expressions this way, do a smarter replacement
 			// TODO: Also do this for for loops, switches and other cases where this makes sense
 			for k, v := range functionVarMap {
 				if strings.Contains(newLine, k) {
