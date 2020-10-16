@@ -18,7 +18,7 @@ import (
 
 const cppHasStdFormat = false
 
-const versionString = "xyproto/go2cpp 0.3.0"
+const versionString = "xyproto/go2cpp 0.4.0"
 
 const tupleType = "std::tuple"
 
