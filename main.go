@@ -77,7 +77,6 @@ var (
 	iotaNumber              int // used for simple increases of iota constants
 	deferCounter            int
 	unfinishedDeferFunction bool
-	ignoreCounter           int
 )
 
 // between returns the string between two given strings, or the original string
@@ -160,17 +159,19 @@ func WholeProgramReplace(source string) (output string) {
 	output = source
 	// TODO: Add these in a smarter way, with more supported types
 	replacements := map[string]string{
-		" string ":         " std::string ",
-		"(string ":         "(std::string ",
+		" string ":         " " + TypeReplace("string") + " ",
+		"(string ":         "(" + TypeReplace("string") + " ",
 		"return string":    "return std::to_string",
-		"make([]string, ":  "std::vector<std::string> (",
-		"make([]int, ":     "std::vector<int> (",
-		"make([]float64, ": "std::vector<double> (",
-		"make([]float32, ": "std::vector<float> (",
-		"-> []string":      "-> std::vector<string>",
-		"-> []int":         "-> std::vector<int>",
-		"-> []float64":     "-> std::vector<double>",
-		"-> []float32":     "-> std::vector<float>",
+		"make([]string, ":  "std::vector<" + TypeReplace("string") + "> (",
+		"make([]int, ":     "std::vector<" + TypeReplace("int") + "> (",
+		"make([]uint, ":    "std::vector<" + TypeReplace("uint") + "> (",
+		"make([]float64, ": "std::vector<" + TypeReplace("float64") + "> (",
+		"make([]float32, ": "std::vector<" + TypeReplace("float32") + "> (",
+		"-> []string":      "-> std::vector<" + TypeReplace("string") + ">",
+		"-> []int":         "-> std::vector<" + TypeReplace("int") + ">",
+		"-> []uint":        "-> std::vector<" + TypeReplace("uint") + ">",
+		"-> []float64":     "-> std::vector<" + TypeReplace("float64") + ">",
+		"-> []float32":     "-> std::vector<" + TypeReplace("float32") + ">",
 		"= nil)":           "= std::nullopt)",
 	}
 	for k, v := range replacements {
@@ -186,9 +187,18 @@ func AddFunctions(source string, useFormatOutput, haveStructs bool) (output stri
 	output = source
 	replacements := map[string]string{
 		"strconv.ParseFloat": `using error = std::optional<std::string>;
-auto strconvParseFloat(std::string s, int n) -> std::tuple<double, error> {
+auto strconvParseFloat(std::string s, int bitSize) -> std::tuple<double, error> {
 	try {
 		return std::tuple { std::stod(s), std::nullopt };
+	} catch (const std::invalid_argument& ia) {
+		return std::tuple { 0.0, std::optional { "invalid argument" } };
+	}
+}
+`,
+		"strconv.ParseInt": `using error = std::optional<std::string>;
+auto strconvParseInt(std::string s, int base, int bitSize) -> std::tuple<int, error> {
+	try {
+		return std::tuple { std::stoi(s), std::nullopt };
 	} catch (const std::invalid_argument& ia) {
 		return std::tuple { 0.0, std::optional { "invalid argument" } };
 	}
@@ -1067,6 +1077,7 @@ func CreateStrMethod(varNames []string) string {
 }
 
 func go2cpp(source string) string {
+	functionVarMap := map[string]string{} // variable names encountered in the function so far, and their corresponding smart names
 	inMultilineString := false
 	debugOutput := false
 	lines := []string{}
@@ -1151,6 +1162,7 @@ func go2cpp(source string) string {
 		} else if inHashMap && !inMultilineString {
 			newLine = HashElements(trimmedLine, hashKeyType, false)
 		} else if strings.HasPrefix(trimmedLine, "func") {
+			functionVarMap = map[string]string{}
 			newLine, currentReturnType, currentFunctionName = FunctionSignature(trimmedLine)
 		} else if strings.HasPrefix(trimmedLine, "for") {
 			newLine = ForLoop(line, encounteredHashMaps)
@@ -1186,41 +1198,35 @@ func go2cpp(source string) string {
 			}
 			if strings.Contains(left, ",") {
 				if strings.Contains(left, "_") {
-					if strings.HasPrefix(left, "_,") {
-						ignoreVarName := "_" + strconv.Itoa(ignoreCounter)
-						ignoreCounter++
-						left = ignoreVarName + left[1:]
-
-					}
-					if strings.HasSuffix(left, ", _") {
-						ignoreVarName := "_" + strconv.Itoa(ignoreCounter)
-						ignoreCounter++
-						left = left[:len(left)-1] + ignoreVarName
-
-					}
-					if left == "_" {
-						ignoreVarName := "_" + strconv.Itoa(ignoreCounter)
-						ignoreCounter++
-						left = ignoreVarName
-
-					}
-					for strings.Contains(left, " _,") {
-						ignoreVarName := "_" + strconv.Itoa(ignoreCounter)
-						ignoreCounter++
-						left = strings.Replace(left, " _,", " "+ignoreVarName+",", 1)
-					}
-					// Use tie and std::ignore if the experssion contains "_"
-					/*
-						left = strings.Replace(left, " _ ", " std::ignore ", -1)
-						left = strings.Replace(left, " _,", " std::ignore,", -1)
-						if strings.HasPrefix(left, "_,") {
-							left = strings.Replace(left, "_", "std::ignore", 1)
+					varNames := strings.Split(left, ",")
+					for _, name := range varNames {
+						name = strings.TrimSpace(name)
+						if value, found := functionVarMap[name]; found {
+							// The key already exists, update the value
+							if value == name {
+								// Add a "0"
+								functionVarMap[name] = value + "0"
+							} else {
+								// Increase the number in the current value by 1
+								num := trailingNumber(value)
+								num++
+								functionVarMap[name] = name + strconv.Itoa(num)
+							}
+						} else {
+							// The key does not exist, just add the name as it is
+							functionVarMap[name] = name
 						}
-						newLine = "std::tie( " + left + ") = " + right
-					*/
-					//newLine = "#pragma warning(push)\n#pragma warning(disable:4101)\nauto ["
-					//newLine += left + "] = " + right + ";\n#pragma warning(pop)\n//"
-					newLine = "auto [" + left + "] = " + right
+					}
+					// The "varInFunction" map should now have been updated correctly, so use that
+
+					useVarNames := []string{}
+					for _, name := range varNames {
+						name = strings.TrimSpace(name)
+						useVarNames = append(useVarNames, functionVarMap[name])
+					}
+					newLine = "auto [" + strings.Join(useVarNames, ", ") + "] = " + right
+					//fmt.Println("function var map:", functionVarMap)
+					//panic(newLine)
 				} else {
 					newLine = "auto [" + left + "] = " + right
 				}
@@ -1251,7 +1257,18 @@ func go2cpp(source string) string {
 						newLine = "std::unordered_map<" + keyType + ", " + valueType + "> " + hashName + " " + HashElements(elements, keyType, false)
 					}
 				} else {
-					newLine = "auto " + strings.TrimSpace(left) + " = " + strings.TrimSpace(right)
+					varName := strings.TrimSpace(left)
+					if value, found := functionVarMap[varName]; found {
+						varName = value
+					}
+
+					for k, v := range functionVarMap {
+						if strings.Contains(right, k) {
+							right = strings.Replace(right, k, v, -1)
+						}
+					}
+
+					newLine = "auto " + varName + " = " + strings.TrimSpace(right)
 				}
 			} else {
 				newLine = left + " = " + right
@@ -1270,6 +1287,13 @@ func go2cpp(source string) string {
 			newLine = DeferCall(line)
 		} else if strings.HasPrefix(trimmedLine, "if ") {
 			newLine = IfSentence(line)
+			// TODO: Short variable names has the potential to ruin if experssions this way, do a smarter replacement
+			// TODO: Also do this for for loops, switches and other cases where this makes sense
+			for k, v := range functionVarMap {
+				if strings.Contains(newLine, k) {
+					newLine = strings.Replace(newLine, k, v, -1)
+				}
+			}
 		} else if strings.HasPrefix(trimmedLine, "} else if ") {
 			newLine = ElseIfSentence(line)
 		} else if trimmedLine == "var (" {
@@ -1447,7 +1471,7 @@ func main() {
 
 	// Compile the string in cppSource
 	cpp := "g++"
-	if cppenv := os.Getenv("CXX"); cppenv != ""  {
+	if cppenv := os.Getenv("CXX"); cppenv != "" {
 		cpp = cppenv
 	}
 	cmd2 := exec.Command(cpp, "-x", "c++", "-std=c++2a", "-O2", "-pipe", "-fPIC", "-Wfatal-errors", "-fpermissive", "-s", "-o", tempFileName, "-")
