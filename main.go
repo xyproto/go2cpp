@@ -1446,7 +1446,11 @@ func main() {
 	defer os.Remove(tempFileName)
 
 	// Compile the string in cppSource
-	cmd2 := exec.Command("g++", "-x", "c++", "-std=c++2a", "-O2", "-pipe", "-fPIC", "-Wfatal-errors", "-fpermissive", "-s", "-o", tempFileName, "-")
+	cpp := "g++"
+	if cppenv := os.Getenv("CXX"); cppenv != ""  {
+		cpp = cppenv
+	}
+	cmd2 := exec.Command(cpp, "-x", "c++", "-std=c++2a", "-O2", "-pipe", "-fPIC", "-Wfatal-errors", "-fpermissive", "-s", "-o", tempFileName, "-")
 	cmd2.Stdin = strings.NewReader(cppSource)
 	var compiled bytes.Buffer
 	var errors bytes.Buffer
