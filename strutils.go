@@ -1,7 +1,6 @@
 package main
 
 import (
-	"strconv"
 	"strings"
 )
 
@@ -15,23 +14,6 @@ func lastchar(line string) string {
 func has(l []string, s string) bool {
 	for _, x := range l {
 		if x == s {
-			return true
-		}
-	}
-	return false
-}
-
-func isNum(s string) bool {
-	_, err := strconv.ParseFloat(s, 64)
-	isFloat := (err == nil)
-	_, err = strconv.ParseInt(s, 0, 64)
-	isInt := (err == nil)
-	return isFloat || isInt
-}
-
-func hasInt(ints []int, i int) bool {
-	for _, z := range ints {
-		if z == i {
 			return true
 		}
 	}
