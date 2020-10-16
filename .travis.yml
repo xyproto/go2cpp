@@ -1,5 +1,5 @@
 dist: focal
-language: go
+language: go c++
 
 go:
   - "1.10"
