@@ -1,6 +1,5 @@
 # go2cpp
 
-[![Build Status](https://travis-ci.com/xyproto/go2cpp.svg?branch=master)](https://travis-ci.com/xyproto/go2cpp)
 [![Go Report Card](https://goreportcard.com/badge/github.com/xyproto/go2cpp)](https://goreportcard.com/report/github.com/xyproto/go2cpp)
 
 Compiles Go to native executables via C++20.
