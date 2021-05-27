@@ -1174,7 +1174,7 @@ func go2cpp(source string) string {
 			if strings.HasPrefix(currentReturnType, tupleType) {
 				elems := strings.SplitN(newLine, "return ", 2)
 				newLine = "return " + currentReturnType + "{" + elems[1] + "};"
-			} else {
+				//} else {
 				// Just use the standard tuple
 			}
 		} else if strings.HasPrefix(trimmedLine, "fmt.Print") || strings.HasPrefix(trimmedLine, "print") {
@@ -1263,9 +1263,7 @@ func go2cpp(source string) string {
 					}
 
 					for k, v := range functionVarMap {
-						if strings.Contains(right, k) {
-							right = strings.Replace(right, k, v, -1)
-						}
+						right = strings.Replace(right, k, v, -1)
 					}
 
 					newLine = "auto " + varName + " = " + strings.TrimSpace(right)
@@ -1290,9 +1288,7 @@ func go2cpp(source string) string {
 			// TODO: Short variable names has the potential to ruin if expressions this way, do a smarter replacement
 			// TODO: Also do this for for loops, switches and other cases where this makes sense
 			for k, v := range functionVarMap {
-				if strings.Contains(newLine, k) {
-					newLine = strings.Replace(newLine, k, v, -1)
-				}
+				newLine = strings.Replace(newLine, k, v, -1)
 			}
 		} else if strings.HasPrefix(trimmedLine, "} else if ") {
 			newLine = ElseIfSentence(line)
