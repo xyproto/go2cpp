@@ -1,7 +1,5 @@
 # go2cpp
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/xyproto/go2cpp)](https://goreportcard.com/report/github.com/xyproto/go2cpp)
-
 Compiles Go to native executables via C++20.
 
 One of the goals is for the compiler to be able to compile itself.
