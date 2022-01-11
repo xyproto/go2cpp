@@ -205,4 +205,4 @@ auto main() -> int
 - [x] `strings.TrimSpace`
 - [ ] All the rest
 
-Ideally, all code in the standard library should transpile correctly to C++20.
+One goal is that all code in the standard library should transpile correctly to C++20.
