@@ -12,6 +12,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -154,6 +155,27 @@ func LiteralStrings(source string) string {
 	//return output
 }
 
+func initializeVariables(sourceCode string) string {
+	varTypes := []string{
+		"int", "double", "float", "char \\*", "const char \\*",
+		"std::string", "uint64_t", "uint32_t", "uint16_t", "uint8_t",
+		"int64_t", "int32_t", "int16_t", "int8_t", "unsigned int",
+	}
+
+	for _, varType := range varTypes {
+		re := regexp.MustCompile(varType + ` ([a-zA-Z_][a-zA-Z0-9_]*)\s*;`)
+		switch varType {
+		case "int", "float", "double", "uint64_t", "uint32_t", "uint16_t", "uint8_t", "int64_t", "int32_t", "int16_t", "int8_t", "unsigned int":
+			sourceCode = re.ReplaceAllString(sourceCode, varType+" $1 = 0;")
+		case "char \\*", "const char \\*":
+			sourceCode = re.ReplaceAllString(sourceCode, varType+" $1 = nullptr;")
+		case "std::string":
+			sourceCode = re.ReplaceAllString(sourceCode, varType+" $1 = \"\";")
+		}
+	}
+	return sourceCode
+}
+
 // TODO: Avoid whole-program replacements, if possible
 func WholeProgramReplace(source string) (output string) {
 	output = source
@@ -177,7 +199,7 @@ func WholeProgramReplace(source string) (output string) {
 	for k, v := range replacements {
 		output = strings.Replace(output, k, v, -1)
 	}
-	return output
+	return initializeVariables(output)
 }
 
 func AddFunctions(source string, useFormatOutput, haveStructs bool) (output string) {
