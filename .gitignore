@@ -1,3 +1,9 @@
-go2cpp
+*.bak
 *.o
+*.swp
+*.tmp
+go2cpp
+include.txt
+main
+main.cpp
 output.cpp
