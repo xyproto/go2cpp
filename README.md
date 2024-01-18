@@ -19,9 +19,11 @@ The intended use is not to convert entire existing Go programs to C++, but to he
 * Few dependencies (for compiling `go2cpp`, only the go compiler is needed).
 * Low complexity.
 * Short source code.
-* `g++` is used for compiling the generated C++ code.
-* `clang-format` is used for formatting the generated C++ code.
 
+## Required dependencies
+
+* `g++` with support for C++20 is used for compiling the generated C++ code.
+* `clang-format` is used for formatting the generated C++ code.
 
 ## Usage
 
@@ -32,11 +34,6 @@ Compile to executable:
 Output what the intermediate C++20 code looks like:
 
     go2cpp main.go
-
-## Requirements
-
-* `g++` with support for C++20
-* `clang-format`
 
 ## Example transformations
 
@@ -91,21 +88,21 @@ auto main() -> int
 package main
 
 import (
-	"fmt"
+    "fmt"
 )
 
 func main() {
-	m := map[string]string{"first": "hi", "second": "you", "third": "there"}
-	first := true
-	for k, v := range m {
-		if first {
-			first = false
-		} else {
-			fmt.Print(" ")
-		}
-		fmt.Print(k + v)
-	}
-	fmt.Println()
+    m := map[string]string{"first": "hi", "second": "you", "third": "there"}
+    first := true
+    for k, v := range m {
+        if first {
+            first = false
+        } else {
+            fmt.Print(" ")
+        }
+        fmt.Print(k + v)
+    }
+    fmt.Println()
 }
 ```
 
