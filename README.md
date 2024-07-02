@@ -25,6 +25,12 @@ The intended use is not to convert entire existing Go programs to C++, but to he
 * `g++` with support for C++20 is used for compiling the generated C++ code.
 * `clang-format` is used for formatting the generated C++ code.
 
+## Installation
+
+    go install github.com/xyproto/go2cpp@latest
+
+Then `~/go/bin/go2cpp` should be available (unless GOPATH points somewhere else).
+
 ## Usage
 
 Compile to executable:
